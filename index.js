@@ -1,7 +1,8 @@
-import { configDotenv } from "dotenv";
+import dotenv from "dotenv";
 import express from "express";
 
-configDotenv({});
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
