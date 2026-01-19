@@ -99,6 +99,33 @@ export const getUser = async(req, res)=>{
     }
 }
 
+export const updateProfile = async(req,res)=>{
+    try {
+        const userId = req.id;
+        const {fullName} = req.body||{};
+         
+        const profilePicture = req.file;
+
+        const user = await User.findByIdAndUpdate(userId, {fullName}, {new:true, runValidators:true})
+
+        if(profilePicture){
+            const result = await imagekit.upload({
+                file:profilePicture.buffer,
+                fileName:profilePicture.originalname
+            })
+            user.profilPhoto  = result.url
+        }
+
+        await user.save()
+        return res.status(201).json({
+            message:"Profile updated successfully",
+            user
+        })
+    } catch (error) {
+        console.log(`This error is coming from profile backend, error_>${error}`)
+    }
+}
+
 // export const  = async  (req,res)=>{
 //     try{
 
