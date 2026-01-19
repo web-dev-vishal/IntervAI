@@ -67,17 +67,15 @@ export const login = async  (req,res)=>{
             })
         }
         
-    }
-    catch (err) {
-        res.status(500).json({ message: "Error registering user", error: err.message });
+    } catch (err) {
+        res.status(500).json({ message: "Error login user", error: err.message });
     }
 }
 
 // export const  = async  (req,res)=>{
 //     try{
 
-//     }
-//     catch (err) {
+//     } catch (err) {
 //         res.status(500).json({ message: "Error registering user", error: err.message });
 //     }
 // }
