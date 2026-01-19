@@ -67,6 +67,12 @@ export const login = async  (req,res)=>{
             })
         }
         
+        const token = await jwt.sign({userId: user._id}, process.env.JWT_SECRET)
+        return res.cookie('token',token, {httpOnly:true}).json({
+            message:`${user.fullname} logged in successfully`,
+            success:true,
+            user
+        })
     } catch (err) {
         res.status(500).json({ message: "Error login user", error: err.message });
     }
