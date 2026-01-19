@@ -87,6 +87,18 @@ export const logout = async  (req,res)=>{
     }
 }
 
+export const getUser = async(req, res)=>{
+    try {
+        const userId = req.id
+        const user = await User.findById(userId)
+        return res.status(201).json({
+            user
+        })
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 // export const  = async  (req,res)=>{
 //     try{
 
