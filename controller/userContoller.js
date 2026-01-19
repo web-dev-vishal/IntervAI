@@ -1,42 +1,40 @@
-import { User } from "../models/user.model.js"; 
+import { User } from "../models/user.model.js";
 import bcrypt from "bcrypt.js"
 
-export const register = async(req,res)=>{
+export const register = async (req, res) => {
     try {
-        const {fullname, email, password} = req.body;
+        const { fullname, email, password } = req.body;
 
-        if(!fullname || !email || !password){
+        if (!fullname || !email || !password) {
             return res.status(401).json({
-                message:"Pleased provide all the Fields❗",
-                success:false
+                message: "Pleased provide all the Fields❗",
+                success: false
             })
         }
 
-        const user = await User.findOne({email})
+        const user = await User.findOne({ email })
 
-        if(user){
+        if (user) {
             return res.status(401).json({
-                message:"User already registered",
-                success:false
+                message: "User already registered",
+                success: false
             })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10)
 
-
         await User.create({
             fullname,
             email,
-            password:hashedPassword
+            password: hashedPassword
         })
 
         return res.status({
             message: "User registed successfully",
-            success:true
+            success: true
         })
-    } 
-        catch (err) {
+    }
+    catch (err) {
         res.status(500).json({ message: "Error registering user", error: err.message });
     }
-    
 }
