@@ -1,5 +1,8 @@
 import { User } from "../models/user.model.js";
-import bcrypt from "bcrypt.js"
+import bcrypt from "bcrypt.js";
+import jwt from 'jsonwebtoken';
+import imagekit from "../config/imagekit.js";
+import multer from "multer";
 
 export const register = async (req, res) => {
     try {
