@@ -35,7 +35,7 @@ export const register = async(req, res) => {
             success: true
         });
     } catch (error) {
-        console.log(`This error is coming from Register backend, error->${error}`);
+        res.status(500).json({ message: "Error registering user", error: err.message });
         return res.status(500).json({
             message: "Internal server error",
             success: false
@@ -76,13 +76,13 @@ export const Login = async(req, res) => {
         const token = await jwt.sign({userId: user._id}, process.env.SECRET_KEY);
         
         return res.cookie('token', token, {httpOnly: true}).json({
-            message: `${user.fullName} logged in successfully`,
+            message: `${user.fullname} logged in successfully`,
             success: true,
             user
         });
     } catch (error) {
-        console.log(`This error is coming from Login backend, error->${error}`);
-        return res.status(500).json({
+        res.status(500).json({ message: "Error login user", error: err.message });
+            return res.status(500).json({
             message: "Internal server error",
             success: false
         });
@@ -121,7 +121,7 @@ export const getUser = async(req, res) => {
             success: true
         });
     } catch (error) {
-        console.log(error);
+        res.status(500).json({ message: "Error get user", error: err.message });
         return res.status(500).json({
             message: "Internal server error",
             success: false
@@ -161,8 +161,8 @@ export const updateProfile = async(req, res) => {
             user
         });
     } catch (error) {
-        console.log(`This error is coming from profile backend, error->${error}`);
-        return res.status(500).json({
+        res.status(500).json({ message: "Error Update user", error: err.message });
+            return res.status(500).json({
             message: "Internal server error",
             success: false
         });
