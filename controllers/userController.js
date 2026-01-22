@@ -2,20 +2,20 @@ import { User } from "../models/User.model.js";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-export const register = async(req, res) => {
+export const register = async (req, res) => {
     try {
-        const {fullname, email, password} = req.body;
+        const { fullname, email, password } = req.body;
 
-        if(!fullname || !email || !password){
+        if (!fullname || !email || !password) {
             return res.status(401).json({
                 message: "Please provide all the values",
                 success: false
             });
         }
 
-        const user = await User.findOne({email});
+        const user = await User.findOne({ email });
 
-        if(user){
+        if (user) {
             return res.status(401).json({
                 message: "User already registered",
                 success: false
@@ -23,9 +23,9 @@ export const register = async(req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         await User.create({
-            fullname, 
+            fullname,
             email,
             password: hashedPassword
         });
@@ -44,27 +44,27 @@ export const register = async(req, res) => {
 };
 
 
-export const Login = async(req, res) => {
+export const Login = async (req, res) => {
     try {
-        const {email, password} = req.body;
-        
-        if(!email || !password){
+        const { email, password } = req.body;
+
+        if (!email || !password) {
             return res.status(401).json({
                 message: "Please provide all the values",
                 success: false
             });
         }
 
-        const user = await User.findOne({email}).select('+password');
+        const user = await User.findOne({ email }).select('+password');
 
-        if(!user){
+        if (!user) {
             return res.status(401).json({
                 message: "Invalid credentials",
                 success: false
             });
         }
 
-        if(!user.password){
+        if (!user.password) {
             return res.status(500).json({
                 message: "Password not found in database",
                 success: false
@@ -73,22 +73,22 @@ export const Login = async(req, res) => {
 
         const isPasswordMatch = await bcrypt.compare(password, user.password);
 
-        if(!isPasswordMatch){
+        if (!isPasswordMatch) {
             return res.status(401).json({
                 message: "Invalid credentials",
                 success: false
             });
         }
 
-        const token = jwt.sign({userId: user._id}, process.env.JWT_SECRET);
-        
-        return res.cookie('token', token, {httpOnly: true}).json({
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
+        return res.cookie('token', token, { httpOnly: true }).json({
             message: `${user.fullname} logged in successfully`,
             success: true,
             user
         });
     } catch (err) {
-        console.log(`This error is coming from Login backend, error->${err}`);
+        res.status(500).json({ message: "Error login user", error: err.message });
         return res.status(500).json({
             message: "Internal server error",
             success: false,
@@ -111,18 +111,18 @@ export const logOut = (req, res) => {
 };
 
 
-export const getUser = async(req, res) => {
+export const getUser = async (req, res) => {
     try {
         const userId = req.id;
         const user = await User.findById(userId);
-        
-        if(!user){
+
+        if (!user) {
             return res.status(404).json({
                 message: "User not found",
                 success: false
             });
         }
-        
+
         return res.status(200).json({
             user,
             success: true
@@ -137,12 +137,12 @@ export const getUser = async(req, res) => {
 };
 
 
-export const updateProfile = async(req, res) => {
+export const updateProfile = async (req, res) => {
     try {
         const userId = req.id;
-        const {fullname} = req.body || {};
-         
-        if(!fullname){
+        const { fullname } = req.body || {};
+
+        if (!fullname) {
             return res.status(400).json({
                 message: "Please provide fullName to update",
                 success: false
@@ -150,12 +150,12 @@ export const updateProfile = async(req, res) => {
         }
 
         const user = await User.findByIdAndUpdate(
-            userId, 
-            {fullname}, 
-            {new: true, runValidators: true}
+            userId,
+            { fullname },
+            { new: true, runValidators: true }
         );
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
                 message: "User not found",
                 success: false
@@ -169,7 +169,7 @@ export const updateProfile = async(req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: "Error Update user", error: err.message });
-            return res.status(500).json({
+        return res.status(500).json({
             message: "Internal server error",
             success: false
         });
