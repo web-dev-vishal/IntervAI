@@ -69,7 +69,6 @@ export const deleteSession = async (req, res) => {
             })
         }
 
-
         await Question.deleteMany({ session: session._id })
 
         await session.deleteOne()
@@ -78,7 +77,6 @@ export const deleteSession = async (req, res) => {
             message: "Session deleted successfully"
         })
     } catch (error) {
-
         res.status(500).json({ message: "Error Delete Session", error: err.message });
     }
 };
