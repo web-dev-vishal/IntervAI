@@ -1,3 +1,6 @@
+import { Question } from "../models/question.model.js";
+import { Session } from "../models/session.model.js";
+
 export const createSession = async (req, res) => {
     try {
         const { role, exprience, topicsToFocus } = req.body;
