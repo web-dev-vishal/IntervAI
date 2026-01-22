@@ -4,9 +4,9 @@ import jwt from 'jsonwebtoken';
 
 export const register = async(req, res) => {
     try {
-        const {fullName, email, password} = req.body;
+        const {fullname, email, password} = req.body;
 
-        if(!fullName || !email || !password){
+        if(!fullname || !email || !password){
             return res.status(401).json({
                 message: "Please provide all the values",
                 success: false
@@ -25,7 +25,7 @@ export const register = async(req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         
         await User.create({
-            fullName, 
+            fullname, 
             email,
             password: hashedPassword
         });
@@ -130,9 +130,9 @@ export const getUser = async(req, res) => {
 export const updateProfile = async(req, res) => {
     try {
         const userId = req.id;
-        const {fullName} = req.body || {};
+        const {fullname} = req.body || {};
          
-        if(!fullName){
+        if(!fullname){
             return res.status(400).json({
                 message: "Please provide fullName to update",
                 success: false
@@ -141,7 +141,7 @@ export const updateProfile = async(req, res) => {
 
         const user = await User.findByIdAndUpdate(
             userId, 
-            {fullName}, 
+            {fullname}, 
             {new: true, runValidators: true}
         );
 
