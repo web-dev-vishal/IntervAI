@@ -44,51 +44,6 @@ export const register = async(req, res) => {
 };
 
 
-// export const Login = async(req, res) => {
-//     try {
-//         const {email, password} = req.body;
-        
-//         if(!email || !password){
-//             return res.status(401).json({
-//                 message: "Please provide all the values",
-//                 success: false
-//             });
-//         }
-
-//         const user = await User.findOne({email});
-
-//         if(!user){
-//             return res.status(401).json({
-//                 message: "Invalid credentials",
-//                 success: false
-//             });
-//         }
-
-//         const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-//         if(!isPasswordMatch){
-//             return res.status(401).json({
-//                 message: "Invalid credentials",
-//                 success: false
-//             });
-//         }
-
-//         const token = await jwt.sign({userId: user._id}, process.env.SECRET_KEY);
-        
-//         return res.cookie('token', token, {httpOnly: true}).json({
-//             message: `${user.fullname} logged in successfully`,
-//             success: true,
-//             user
-//         });
-//     } catch (error) {
-//         res.status(500).json({ message: "Error login user", error: err.message });
-//             return res.status(500).json({
-//             message: "Internal server error",
-//             success: false
-//         });
-//     }
-// };
-
 export const Login = async(req, res) => {
     try {
         const {email, password} = req.body;
@@ -100,8 +55,7 @@ export const Login = async(req, res) => {
             });
         }
 
-        // Add .select('password') to include password field
-        const user = await User.findOne({email}).select('password');
+        const user = await User.findOne({email}).select('+password');
 
         if(!user){
             return res.status(401).json({
@@ -110,7 +64,6 @@ export const Login = async(req, res) => {
             });
         }
 
-        // Additional check to ensure password exists
         if(!user.password){
             return res.status(500).json({
                 message: "Password not found in database",
@@ -135,10 +88,11 @@ export const Login = async(req, res) => {
             user
         });
     } catch (err) {
-        res.status(500).json({ message: "Error login user", error: err.message });
+        console.log(`This error is coming from Login backend, error->${err}`);
         return res.status(500).json({
             message: "Internal server error",
-            success: false
+            success: false,
+            error: err.message
         });
     }
 };
