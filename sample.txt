@@ -1,106 +1,109 @@
-import { Question } from "../models/question.model.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Session } from "../models/session.model.js";
+import { Question } from "../models/question.model.js";
 
-export const createSession = async(req , res)=>{
+const ai = new GoogleGenerativeAI(process.env.GEN_AI);
+
+export const generateInterviewQuestion = async (req, res) => {
+  try {
+    const { role, experience, topicsToFocus, sessionId } = req.body;
+
+    const prompt = `
+You are an interview question generator.
+Return ONLY a valid JSON array. Do not include explanations, extra text, or formatting.
+
+Example format:
+[
+  {"question": "What is React?", "answer": "React is a JS library for building UIs."}
+]
+
+Now generate 5 questions for a ${role} with ${experience} years experience.
+Focus on topics: ${topicsToFocus}.
+`;
+
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+
+    let rawText = result.response.text();
+    rawText = rawText.replace(/```json|```/gi, "").trim();
+    const match = rawText.match(/\[([\s\S]*?)\]/);
+    if (match) rawText = match[0];
+
+    let data;
     try {
-        const {role, experience,  topicsToFocus} = req.body;
-        const  userId = req.id
-        if(!role || !experience || !topicsToFocus){
+      data = JSON.parse(rawText);
+      // console.log("Parsed AI data:", data);
+    } catch (err) {
+      console.error("Failed to parse JSON:", rawText);
+      return res.status(400).json({ message: "Invalid JSON from model" });
+    }
+
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    const createdQuestions = await Question.insertMany(
+      data.map((q) => ({
+        session: sessionId,
+        question: q.question,
+        answer: q.answer,
+      }))
+    );
+
+    // Agar session ke andar bhi questions ka reference chahiye:
+    if (session.questions) {
+      session.questions.push(...createdQuestions.map(q => q._id));
+      await session.save();
+    }
+
+    return res.status(201).json({
+      message: "Questions created successfully",
+      
+    });
+
+  } catch (error) {
+    console.error("Error in generateInterviewQuestion:", error);
+   
+  }
+};
+
+
+export const togglePinQuestion = async(req,res)=>{
+    try {
+        const question = await Question.findById(req.params.id)
+
+        if(!question){
             return res.status(401).json({
-                message:"Please provide all the details"
+                message:"Question not found"
             })
         }
 
-        const session = await Session.create({
-            user:userId,
-            role,
-            experience,
-            topicsToFocus
-        })
+        question.isPinned = !question.isPinned
 
-
-        await session.save()
-
+        await question.save({ validateBeforeSave: false })
+        
         return res.status(201).json({
-            message:"Session created successfully"
+            message:"Question pinned successfully",
+            // question
         })
     } catch (error) {
-        console.log(`This error is coming from createSession , error->${error}`)
-    }
-}
-
-export const getSession = async(req, res)=>{
-    try {
-        const userId = req.id
-        const session  = await Session.find({user:userId})
-        .sort({createdAt:-1})
-        .populate("questions")
-
-        res.status(201).json({
-            session
-        })
-
-
-    } catch (error) {
-        console.log(`This error is coming from getSession, error->${error}`)
-    }
-}
-
-export const getSessionById = async(req, res)=>{
-    try {
-        const session = await Session.findById(req.params.id)
-        .sort({createdAt:-1})
-        .populate({
-            path:"questions",
-            options:{sort:{isPinned:-1}, createdAt:-1}
-        })
-
-        return res.status(201).json({
-            session
-        })
-    } catch (error) {
-        console.log(`This error is coming from getSessionById, error->${error}`)
+        console.log(`this eror is coming from toggle PIn question, error->${error}`)
     }
 }
 
 
-export const deleteSession = async(req,res)=>{
-    try {
-        const session = await Session.findById(req.params.id)
-
-        if(!session){
-            return res.status(401).json({
-                message:"Session not found"
-            })
-        }
+// ==================================================== //
 
 
-        await Question.deleteMany({session:session._id})
-
-        await session.deleteOne()
-
-        return res.status(201).json({
-            message:"Session deleted successfully"
-        })
-    } catch (error) {
-        console.log(`This error is coming from deleteSession, error->${error}`)
-    }
-}
-
-
-
-// ================================================================ //
 import express from 'express'
 import { AuthMiddleware } from '../middleware/Auth.middleware.js'
-import { createSession, deleteSession, getSession, getSessionById } from '../Controller/session.controller.js'
+import { generateInterviewQuestion, togglePinQuestion } from '../Controller/question.controller.js'
+
+const questionRoute = express.Router()
+
+questionRoute.route('/addQuestion').post(AuthMiddleware, generateInterviewQuestion)
+questionRoute.route('/toggleQuestion/:id').post(AuthMiddleware, togglePinQuestion)
 
 
-const sessionRouter= express.Router()
-
-
-sessionRouter.route('/createSession').post(AuthMiddleware, createSession)
-sessionRouter.route('/getMySession').get(AuthMiddleware, getSession)
-sessionRouter.route('/getMySessionById/:id').get(AuthMiddleware, getSessionById)
-sessionRouter.route('/deleteMySession/:id').delete(AuthMiddleware, deleteSession)
-
-export default sessionRouter
+export default questionRoute
