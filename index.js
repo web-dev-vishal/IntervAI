@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 import userRouter from "./routes/user.routes.js";
 import sessionRouter from "./routes/session.routes.js";
+import questionRoute from "./routes/question.routes.js";
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ app.use(express.urlencoded({extended:true}));
 
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/session", sessionRouter);
-// app.use("/api/v1/question", questionRoute);
+app.use("/api/v1/question", questionRoute);
 
 app.listen(PORT, () => {
     connectDB();
