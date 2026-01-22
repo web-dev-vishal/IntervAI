@@ -42,9 +42,28 @@ export const getSession = async (req,res)=> {
 };
 
 export const getSessionById = async (req,res)=> {
+    try {
+        const session = await Session.findById(req.params.id)
+        .sort({createdAt:-1})
+        .populate({
+            path:"questions",
+            options:{sort:{isPinned:-1}, createdAt:-1}
+        })
 
+        return res.status(201).json({
+            session
+        })
+    } catch (error) {
+        res.status(500).json({ message: "Error in Get Session By Id", error: err.message });
+        
+    }
 };
 
 export const deleteSession = async (req,res)=> {
-
+    try {
+        
+    } catch (error) {
+        
+        res.status(500).json({ message: "Error Delete Session", error: err.message });
+    }
 };
