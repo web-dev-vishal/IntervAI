@@ -3,28 +3,58 @@ import { Session } from "../models/session.model.js";
 
 export const createSession = async (req, res) => {
     try {
-        const { role, exprience, topicsToFocus } = req.body;
-        const userId = req.id
-        if (!role || !exprience || !topicsToFocus) {
-            return res.status(401).json({
-                message: "Please Provide all the details"
-            })
+        const { role, experience, topicsToFocus } = req.body;
+        const userId = req.id;
+        
+        if (!role || !experience || !topicsToFocus) {
+            return res.status(400).json({
+                message: "Please provide all the details",
+                success: false
+            });
+        }
+
+        if (!Array.isArray(topicsToFocus) || topicsToFocus.length === 0) {
+            return res.status(400).json({
+                message: "Please provide at least one topic to focus",
+                success: false
+            });
+        }
+
+        const validRoles = ['interviewer', 'interviewee', 'mock-interview', 'practice', 'Backend Developer', 'Frontend Developer'];
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({
+                message: `Invalid role. Allowed values: ${validRoles.join(', ')}`,
+                success: false
+            });
+        }
+
+        const validExperience = ['entry-level', 'junior', 'mid-level', 'senior', 'lead', 'expert'];
+        if (!validExperience.includes(experience)) {
+            return res.status(400).json({
+                message: `Invalid experience level. Allowed values: ${validExperience.join(', ')}`,
+                success: false
+            });
         }
 
         const session = await Session.create({
             user: userId,
             role,
-            exprience,
+            experience,
             topicsToFocus
-        })
-
-        await session.save()
+        });
 
         return res.status(201).json({
-            message: "Session created successfully"
-        })
-    } catch (error) {
-        res.status(500).json({ message: "Error in Create Session", error: err.message });
+            message: "Session created successfully",
+            success: true,
+            session
+        });
+    } catch (err) {
+        console.log(`Error in Create Session: ${err.message}`);
+        return res.status(500).json({ 
+            message: "Error in Create Session", 
+            error: err.message,
+            success: false
+        });
     }
 };
 
@@ -39,7 +69,7 @@ export const getSession = async (req, res) => {
             session
         })
 
-    } catch (error) {
+    } catch (err) {
         res.status(500).json({ message: "Error in Get Session", error: err.message });
     }
 };
@@ -56,7 +86,7 @@ export const getSessionById = async (req, res) => {
         return res.status(201).json({
             session
         })
-    } catch (error) {
+    } catch (err) {
         res.status(500).json({ message: "Error in Get Session By Id", error: err.message });
 
     }
@@ -79,7 +109,7 @@ export const deleteSession = async (req, res) => {
         return res.status(201).json({
             message: "Session deleted successfully"
         })
-    } catch (error) {
+    } catch (err) {
         res.status(500).json({ message: "Error Delete Session", error: err.message });
     }
 };

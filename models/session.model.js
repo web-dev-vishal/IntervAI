@@ -11,7 +11,7 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Role is required'],
         enum: {
-            values: ['interviewer', 'interviewee', 'mock-interview', 'practice'],
+            values: ['interviewer', 'interviewee', 'mock-interview', 'practice','Backend Developer', 'Frontend Developer'],
             message: '{VALUE} is not a valid role'
         },
         trim: true
