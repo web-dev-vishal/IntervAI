@@ -1,137 +1,88 @@
-import { User } from "../models/User.model.js";
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import imagekit from "../config/imagekit.js";
-import multer from "multer";
+import { Question } from "../models/question.model.js";
+import { Session } from "../models/session.model.js";
 
-export const upload = multer()
-export const register = async(req ,res)=>{
+export const createSession = async(req , res)=>{
     try {
-        const {fullName, email, password}= req.body;
-
-        if(!fullName || !email || !password){
+        const {role, experience,  topicsToFocus} = req.body;
+        const  userId = req.id
+        if(!role || !experience || !topicsToFocus){
             return res.status(401).json({
-                message:"Please provide all the values",
-                success:false
+                message:"Please provide all the details"
             })
         }
 
-        const user = await User.findOne({email})
-
-        if(user){
-            return res.status(401).json({
-                message:"User already registered",
-                success:false
-            })
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10)
-        
-
-        await User.create({
-            fullName, 
-            email,
-            password:hashedPassword
+        const session = await Session.create({
+            user:userId,
+            role,
+            experience,
+            topicsToFocus
         })
+
+
+        await session.save()
 
         return res.status(201).json({
-            message:"User registed successfully",
-            success:true
+            message:"Session created successfully"
         })
     } catch (error) {
-        console.log(`This error is coming from Register backend, error->${error}`)
+        console.log(`This error is coming from createSession , error->${error}`)
     }
 }
 
-
-export const Login = async(req, res)=>{
-    try {
-        const {email , password} = req.body;
-        if(!email || !password){
-            return res.status(401).json({
-                message:"Please provide all the vlaues",
-                success:false
-            })
-        }
-
-        const user = await User.findOne({email})
-
-        if(!user){
-            return res.status(401).json({
-                message:"Invalid credentials",
-                success:false
-            })
-        }
-
-        const isPasswordMatch = await bcrypt.compare(password, user.password)
-
-        if(!isPasswordMatch){
-            return res.status(401).json({
-                message:"Invalid credentials",
-                success:false
-            })
-        }
-
-        const token = await jwt.sign({userId : user._id},process.env.SECRET_KEY)
-        return res.cookie('token',token, {httpOnly:true}).json({
-            message:`${user.fullName} logged in successfully`,
-            success:true,
-            user
-        })
-    } catch (error) {
-        console.log(`This error is coming from Login backend, erro_>${error}`)
-    }
-}
-
-
-export const getUser = async(req, res)=>{
+export const getSession = async(req, res)=>{
     try {
         const userId = req.id
-        const user = await User.findById(userId)
-        return res.status(201).json({
-            user
+        const session  = await Session.find({user:userId})
+        .sort({createdAt:-1})
+        .populate("questions")
+
+        res.status(201).json({
+            session
         })
+
+
     } catch (error) {
-        console.log(error)
+        console.log(`This error is coming from getSession, error->${error}`)
     }
 }
-export const logOUt = (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: true,        // agar HTTPS hai (Render/Vercel to hamesha hota hai)
-    sameSite: "none",    // cross-site requests ke liye zaroori
-  });
 
-  return res.status(200).json({
-    success: true,
-    message: "User logged out successfully",
-  });
-};
-
-
-export const updateProfile = async(req,res)=>{
+export const getSessionById = async(req, res)=>{
     try {
-        const userId = req.id;
-        const {fullName} = req.body||{};
-         
-        const profilePicture = req.file;
+        const session = await Session.findById(req.params.id)
+        .sort({createdAt:-1})
+        .populate({
+            path:"questions",
+            options:{sort:{isPinned:-1}, createdAt:-1}
+        })
 
-        const user = await User.findByIdAndUpdate(userId, {fullName}, {new:true, runValidators:true})
-
-        if(profilePicture){
-            const result = await imagekit.upload({
-                file:profilePicture.buffer,
-                fileName:profilePicture.originalname
-            })
-            user.profilPhoto  = result.url
-        }
-
-        await user.save()
         return res.status(201).json({
-            message:"Profile updated successfully",
-            user
+            session
         })
     } catch (error) {
-        console.log(`This error is coming from profile backend, error_>${error}`)
+        console.log(`This error is coming from getSessionById, error->${error}`)
+    }
+}
+
+
+export const deleteSession = async(req,res)=>{
+    try {
+        const session = await Session.findById(req.params.id)
+
+        if(!session){
+            return res.status(401).json({
+                message:"Session not found"
+            })
+        }
+
+
+        await Question.deleteMany({session:session._id})
+
+        await session.deleteOne()
+
+        return res.status(201).json({
+            message:"Session deleted successfully"
+        })
+    } catch (error) {
+        console.log(`This error is coming from deleteSession, error->${error}`)
     }
 }
