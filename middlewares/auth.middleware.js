@@ -1,6 +1,8 @@
-export const AuthMiddleware = async (req, res, next) => {
+import jwt from 'jsonwebtoken'
+
+export const AuthMiddleware  = async(req ,res , next)=>{
     try {
-        const token = req.cookie.token
+        const token = req.cookies.token
 
         if(!token){
             return res.status(401).json({
@@ -8,8 +10,8 @@ export const AuthMiddleware = async (req, res, next) => {
                 success:false
             })
         }
-
-        const decode = await jwt.verify(token, process.env.JWT_SECRET)
+         
+        const decode  = await jwt.verify(token, process.env.JWT_SECRET)
         if(!decode){
             return res.status(401).json({
                 message:"Invalid token",
@@ -17,11 +19,10 @@ export const AuthMiddleware = async (req, res, next) => {
             })
         }
 
-        req.id = decode.userId 
+        req.id = decode.userId
 
         next()
     } catch (error) {
-        res.status(500).json({ message: "Error auth Middleware", error: err.message });
-
+        console.log(`This error is coming from AuthMiddleware, error-->${error}`)
     }
 }
