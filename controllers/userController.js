@@ -89,6 +89,18 @@ export const Login = async(req, res) => {
     }
 };
 
+export const logOut = (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "User logged out successfully",
+    });
+};
 
 export const getUser = async(req, res) => {
     try {
@@ -114,21 +126,6 @@ export const getUser = async(req, res) => {
         });
     }
 };
-
-
-export const logOut = (req, res) => {
-    res.clearCookie("token", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-    });
-
-    return res.status(200).json({
-        success: true,
-        message: "User logged out successfully",
-    });
-};
-
 
 export const updateProfile = async(req, res) => {
     try {
