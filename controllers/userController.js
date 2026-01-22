@@ -43,6 +43,7 @@ export const register = async(req, res) => {
     }
 };
 
+
 export const Login = async(req, res) => {
     try {
         const {email, password} = req.body;
@@ -88,6 +89,7 @@ export const Login = async(req, res) => {
     }
 };
 
+
 export const logOut = (req, res) => {
     res.clearCookie("token", {
         httpOnly: true,
@@ -100,6 +102,7 @@ export const logOut = (req, res) => {
         message: "User logged out successfully",
     });
 };
+
 
 export const getUser = async(req, res) => {
     try {
@@ -125,6 +128,7 @@ export const getUser = async(req, res) => {
         });
     }
 };
+
 
 export const updateProfile = async(req, res) => {
     try {
