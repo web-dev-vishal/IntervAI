@@ -4,8 +4,8 @@ import { getUser, Login, logOut, register, updateProfile } from '../controllers/
 const userRouter = express.Router();
 
 userRouter.route('/register').post(register);
-userRouter.route('/getUser').get(AuthMiddleware, getUser);
 userRouter.route('/login').post(Login);
+userRouter.route('/getUser').get(AuthMiddleware, getUser);
 userRouter.route('/logout').post(AuthMiddleware, logOut);
 userRouter.route('/updateProfile').post(AuthMiddleware, updateProfile);
 

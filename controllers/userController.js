@@ -44,6 +44,51 @@ export const register = async(req, res) => {
 };
 
 
+// export const Login = async(req, res) => {
+//     try {
+//         const {email, password} = req.body;
+        
+//         if(!email || !password){
+//             return res.status(401).json({
+//                 message: "Please provide all the values",
+//                 success: false
+//             });
+//         }
+
+//         const user = await User.findOne({email});
+
+//         if(!user){
+//             return res.status(401).json({
+//                 message: "Invalid credentials",
+//                 success: false
+//             });
+//         }
+
+//         const isPasswordMatch = await bcrypt.compare(password, user.password);
+
+//         if(!isPasswordMatch){
+//             return res.status(401).json({
+//                 message: "Invalid credentials",
+//                 success: false
+//             });
+//         }
+
+//         const token = await jwt.sign({userId: user._id}, process.env.SECRET_KEY);
+        
+//         return res.cookie('token', token, {httpOnly: true}).json({
+//             message: `${user.fullname} logged in successfully`,
+//             success: true,
+//             user
+//         });
+//     } catch (error) {
+//         res.status(500).json({ message: "Error login user", error: err.message });
+//             return res.status(500).json({
+//             message: "Internal server error",
+//             success: false
+//         });
+//     }
+// };
+
 export const Login = async(req, res) => {
     try {
         const {email, password} = req.body;
@@ -55,11 +100,20 @@ export const Login = async(req, res) => {
             });
         }
 
-        const user = await User.findOne({email});
+        // Add .select('password') to include password field
+        const user = await User.findOne({email}).select('password');
 
         if(!user){
             return res.status(401).json({
                 message: "Invalid credentials",
+                success: false
+            });
+        }
+
+        // Additional check to ensure password exists
+        if(!user.password){
+            return res.status(500).json({
+                message: "Password not found in database",
                 success: false
             });
         }
@@ -73,22 +127,21 @@ export const Login = async(req, res) => {
             });
         }
 
-        const token = await jwt.sign({userId: user._id}, process.env.SECRET_KEY);
+        const token = jwt.sign({userId: user._id}, process.env.JWT_SECRET);
         
         return res.cookie('token', token, {httpOnly: true}).json({
             message: `${user.fullname} logged in successfully`,
             success: true,
             user
         });
-    } catch (error) {
+    } catch (err) {
         res.status(500).json({ message: "Error login user", error: err.message });
-            return res.status(500).json({
+        return res.status(500).json({
             message: "Internal server error",
             success: false
         });
     }
 };
-
 
 export const logOut = (req, res) => {
     res.clearCookie("token", {
