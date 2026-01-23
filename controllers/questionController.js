@@ -8,11 +8,6 @@ const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || process.env.GROQ_API || ''
 });
 
-/**
- * Generate interview questions using Groq AI
- * @route POST /api/questions/addQuestion
- * @access Private (requires authentication)
- */
 export const generateInterviewQuestion = async (req, res) => {
     try {
         // ✅ Check if API key exists
