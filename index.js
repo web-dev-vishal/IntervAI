@@ -1,20 +1,6 @@
-// ✅ CRITICAL: Load dotenv FIRST before any other imports
 import dotenv from "dotenv";
 dotenv.config();
 
-// ✅ Debug: Verify environment variables are loaded
-console.log('🔍 Environment Variables Check:');
-console.log('PORT:', process.env.PORT || 'NOT SET');
-console.log('MONGO_URI:', process.env.MONGO_URI ? '✅ SET' : '❌ NOT SET');
-console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ SET' : '❌ NOT SET');
-console.log('GROQ_API:', process.env.GROQ_API ? '✅ SET' : '❌ NOT SET');
-if (process.env.GROQ_API) {
-    console.log('GROQ_API length:', process.env.GROQ_API.length);
-    console.log('GROQ_API preview:', process.env.GROQ_API.substring(0, 10) + '...');
-}
-console.log('─'.repeat(60));
-
-// ✅ Now import everything else (these will have access to process.env)
 import express from "express";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
@@ -53,17 +39,16 @@ app.get('/health', (req, res) => {
 // Start server
 app.listen(PORT, () => {
     connectDB();
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📊 INTERVAI API is ready!`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });
 
 // Error handling
 process.on('unhandledRejection', (err) => {
-    console.error('❌ Unhandled Rejection:', err);
+    console.error('Unhandled Rejection:', err);
     process.exit(1);
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err);
+    console.error('Uncaught Exception:', err);
     process.exit(1);
 });
