@@ -3,24 +3,56 @@ import { Session } from "../models/session.model.js";
 import { Question } from "../models/question.model.js";
 import mongoose from "mongoose";
 
-// ✅ Initialize Groq with explicit API key
-const groq = new Groq({ 
-    apiKey: process.env.GROQ_API_KEY || process.env.GROQ_API || ''
-});
+// ✅ DON'T initialize Groq at module load time - do it lazily
+let groqInstance = null;
+
+const getGroqClient = () => {
+    if (groqInstance) {
+        return groqInstance;
+    }
+
+    // Get API key from environment
+    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
+    
+    if (!apiKey || apiKey.trim() === '') {
+        console.error('❌ [CONFIG] GROQ API key is missing from environment variables');
+        console.error('💡 [CONFIG] Please set either GROQ_API_KEY or GROQ_API in your .env file');
+        console.error('🔍 [CONFIG] Current env vars:', {
+            GROQ_API_KEY: !!process.env.GROQ_API_KEY,
+            GROQ_API: !!process.env.GROQ_API
+        });
+        return null;
+    }
+    
+    // Validate API key format
+    if (!apiKey.startsWith('gsk_')) {
+        console.warn('⚠️  [CONFIG] GROQ API key format may be invalid. Expected format: gsk_...');
+        console.warn('⚠️  [CONFIG] Current key starts with:', apiKey.substring(0, 4) + '...');
+    }
+    
+    console.log('✅ [CONFIG] GROQ API initialized successfully');
+    console.log('🔑 [CONFIG] Using API key:', apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4));
+    
+    groqInstance = new Groq({ apiKey: apiKey.trim() });
+    return groqInstance;
+};
 
 /**
  * Generate interview questions using Groq AI
- * @route POST /api/questions/addQuestion
+ * @route POST /api/questions/generate
  * @access Private (requires authentication)
  */
 export const generateInterviewQuestion = async (req, res) => {
     try {
-        // ✅ Check if API key exists
-        if (!process.env.GROQ_API_KEY && !process.env.GROQ_API) {
-            console.error('[CONFIG] GROQ API key is missing');
+        // ✅ Get Groq client (initialized on first use)
+        const groq = getGroqClient();
+        
+        if (!groq) {
+            console.error('❌ [CONFIG] GROQ API client not initialized');
             return res.status(500).json({
-                message: "GROQ API key is not configured. Please add GROQ_API_KEY to your .env file",
-                success: false
+                message: "AI service is not configured. Please add GROQ_API to your .env file",
+                success: false,
+                hint: "Add GROQ_API=gsk_... to your .env file and restart the server"
             });
         }
 
@@ -112,8 +144,7 @@ export const generateInterviewQuestion = async (req, res) => {
         // ✅ Create prompt for Groq
         const topicsString = topicsToFocus.map(t => t.trim()).join(', ');
 
-        const prompt = `
-You are an expert interview question generator.
+        const prompt = `You are an expert interview question generator.
 Generate exactly 5 interview questions for the following role and experience level.
 
 Role: ${role.trim()}
@@ -129,18 +160,17 @@ Example format:
   {"question": "Explain the concept of Virtual DOM.", "answer": "Virtual DOM is a lightweight copy of the actual DOM. React uses it to minimize direct DOM manipulation by calculating the difference between the current and new virtual DOM, then updating only the changed parts in the real DOM."}
 ]
 
-Now generate 5 high-quality interview questions with detailed answers:
-`;
+Now generate 5 high-quality interview questions with detailed answers:`;
 
-        console.log('[AI] Calling Groq API with model: llama-3.1-8b-instant');
-        console.log('[AI] Request details:', {
+        console.log('🤖 [AI] Calling Groq API with model: llama-3.1-8b-instant');
+        console.log('📝 [AI] Request details:', {
             role: role.trim(),
             experience: experience.trim(),
             topicsCount: topicsToFocus.length,
             sessionId
         });
         
-        // ✅ Call Groq API with detailed configuration and timeout
+        // ✅ Call Groq API with detailed configuration and error handling
         let completion;
         try {
             completion = await groq.chat.completions.create({
@@ -162,19 +192,62 @@ Now generate 5 high-quality interview questions with detailed answers:
                 stop: null
             });
         } catch (apiError) {
-            console.error('[AI] Groq API error:', apiError);
+            console.error('❌ [AI] Groq API error:', {
+                name: apiError.name,
+                message: apiError.message,
+                status: apiError.status,
+                code: apiError.error?.error?.code
+            });
+
+            // ✅ Handle specific error types
+            if (apiError.status === 401 || apiError.error?.error?.code === 'invalid_api_key') {
+                console.error('🔑 [AI] Authentication failed - Invalid API key');
+                console.error('💡 [AI] Please verify your GROQ_API key in .env file');
+                console.error('💡 [AI] Get a new key from: https://console.groq.com/keys');
+                
+                return res.status(500).json({
+                    message: "AI service authentication failed. Invalid or expired API key",
+                    success: false,
+                    error: "Invalid API key",
+                    hint: "Please verify GROQ_API in your .env file. Get a new key from https://console.groq.com/keys",
+                    troubleshooting: {
+                        step1: "Go to https://console.groq.com/keys",
+                        step2: "Create a new API key",
+                        step3: "Update GROQ_API in your .env file",
+                        step4: "Restart the server"
+                    }
+                });
+            }
+
+            if (apiError.status === 429) {
+                return res.status(429).json({
+                    message: "AI service rate limit exceeded. Please try again in a moment",
+                    success: false,
+                    error: "Rate limit exceeded"
+                });
+            }
+
+            if (apiError.status === 503 || apiError.status === 502) {
+                return res.status(503).json({
+                    message: "AI service is temporarily unavailable. Please try again later",
+                    success: false,
+                    error: "Service unavailable"
+                });
+            }
+
+            // Generic API error
             return res.status(503).json({
-                message: "Failed to connect to AI service. Please try again later.",
-                error: apiError.message,
-                success: false
+                message: "Failed to connect to AI service. Please try again later",
+                success: false,
+                error: apiError.message
             });
         }
 
-        console.log('[AI] Groq API response received');
+        console.log('✅ [AI] Groq API response received');
         
         // ✅ Log token usage if available
         if (completion.usage) {
-            console.log('[AI] Token usage:', {
+            console.log('📊 [AI] Token usage:', {
                 prompt_tokens: completion.usage.prompt_tokens,
                 completion_tokens: completion.usage.completion_tokens,
                 total_tokens: completion.usage.total_tokens
@@ -185,24 +258,24 @@ Now generate 5 high-quality interview questions with detailed answers:
         let rawText = completion.choices[0]?.message?.content;
 
         if (!rawText) {
-            console.error('[AI] Empty response from Groq API');
+            console.error('❌ [AI] Empty response from Groq API');
             return res.status(500).json({
                 message: "Failed to generate questions from AI - empty response",
                 success: false
             });
         }
 
-        console.log('[AI] Raw response length:', rawText.length);
+        console.log('📄 [AI] Raw response length:', rawText.length);
 
         // ✅ Clean the response - remove markdown code blocks and extra whitespace
         rawText = rawText.replace(/```json|```/gi, "").trim();
         
-        // ✅ Extract JSON array from text (handle cases where AI adds extra text)
+        // ✅ Extract JSON array from text
         const match = rawText.match(/\[([\s\S]*?)\]/);
         if (match) {
             rawText = match[0];
         } else {
-            console.error('[AI] No JSON array found in response:', rawText.substring(0, 200));
+            console.error('❌ [AI] No JSON array found in response:', rawText.substring(0, 200));
             return res.status(500).json({
                 message: "AI response did not contain a valid JSON array",
                 success: false
@@ -214,7 +287,7 @@ Now generate 5 high-quality interview questions with detailed answers:
         try {
             data = JSON.parse(rawText);
         } catch (err) {
-            console.error('[AI] Failed to parse JSON:', {
+            console.error('❌ [AI] Failed to parse JSON:', {
                 error: err.message,
                 rawText: rawText.substring(0, 500)
             });
@@ -227,7 +300,7 @@ Now generate 5 high-quality interview questions with detailed answers:
 
         // ✅ Validate parsed data is an array
         if (!Array.isArray(data)) {
-            console.error('[AI] Parsed data is not an array:', typeof data);
+            console.error('❌ [AI] Parsed data is not an array:', typeof data);
             return res.status(500).json({
                 message: "AI did not return a valid array",
                 success: false
@@ -236,14 +309,14 @@ Now generate 5 high-quality interview questions with detailed answers:
 
         // ✅ Validate data is not empty
         if (data.length === 0) {
-            console.error('[AI] AI returned empty array');
+            console.error('❌ [AI] AI returned empty array');
             return res.status(500).json({
                 message: "AI returned an empty array",
                 success: false
             });
         }
 
-        // ✅ Validate each question has required fields with detailed logging
+        // ✅ Validate each question has required fields
         const validQuestions = data.filter((q, index) => {
             const isValid = q && 
                    typeof q === 'object' && 
@@ -255,7 +328,7 @@ Now generate 5 high-quality interview questions with detailed answers:
                    q.answer.trim() !== '';
             
             if (!isValid) {
-                console.warn(`[AI] Invalid question at index ${index}:`, {
+                console.warn(`⚠️  [AI] Invalid question at index ${index}:`, {
                     hasQuestion: !!q?.question,
                     hasAnswer: !!q?.answer,
                     questionType: typeof q?.question,
@@ -267,16 +340,16 @@ Now generate 5 high-quality interview questions with detailed answers:
         });
         
         if (validQuestions.length === 0) {
-            console.error('[AI] No valid questions generated from data:', data);
+            console.error('❌ [AI] No valid questions generated');
             return res.status(500).json({
                 message: "No valid questions generated - all questions missing required fields",
                 success: false
             });
         }
 
-        console.log(`[AI] Generated ${validQuestions.length} valid questions out of ${data.length} total`);
+        console.log(`✅ [AI] Generated ${validQuestions.length} valid questions out of ${data.length} total`);
 
-        // ✅ Create questions in database with error handling
+        // ✅ Create questions in database
         let createdQuestions;
         try {
             createdQuestions = await Question.insertMany(
@@ -284,18 +357,17 @@ Now generate 5 high-quality interview questions with detailed answers:
                     session: sessionId,
                     question: q.question.trim(),
                     answer: q.answer.trim(),
-                    isPinned: false // Ensure default value
+                    isPinned: false
                 })),
-                { ordered: false } // Continue inserting even if one fails
+                { ordered: false }
             );
-            console.log(`[DB] Successfully inserted ${createdQuestions.length} questions`);
+            console.log(`✅ [DB] Successfully inserted ${createdQuestions.length} questions`);
         } catch (dbError) {
-            console.error('[DB] Error inserting questions:', dbError);
+            console.error('❌ [DB] Error inserting questions:', dbError);
             
-            // Check if it's a partial insertion error
             if (dbError.insertedDocs && dbError.insertedDocs.length > 0) {
                 createdQuestions = dbError.insertedDocs;
-                console.log(`[DB] Partial insertion: ${createdQuestions.length} questions saved`);
+                console.log(`⚠️  [DB] Partial insertion: ${createdQuestions.length} questions saved`);
             } else {
                 return res.status(500).json({
                     message: "Failed to save questions to database",
@@ -309,12 +381,10 @@ Now generate 5 high-quality interview questions with detailed answers:
         try {
             session.questions.push(...createdQuestions.map(q => q._id));
             await session.save();
-            console.log(`[DB] Session updated with ${createdQuestions.length} new questions`);
+            console.log(`✅ [DB] Session updated with ${createdQuestions.length} new questions`);
         } catch (saveError) {
-            console.error('[DB] Error updating session:', saveError);
-            // Questions are created but session not updated - log but don't fail
-            console.warn('[DB] Questions created but session update failed - questions:', 
-                createdQuestions.map(q => q._id));
+            console.error('❌ [DB] Error updating session:', saveError);
+            console.warn('⚠️  [DB] Questions created but session update failed');
         }
 
         return res.status(201).json({
@@ -328,7 +398,7 @@ Now generate 5 high-quality interview questions with detailed answers:
         });
 
     } catch (error) {
-        console.error('[ERROR] Error in generateInterviewQuestion:', {
+        console.error('❌ [ERROR] Error in generateInterviewQuestion:', {
             message: error.message,
             stack: error.stack
         });
@@ -342,14 +412,14 @@ Now generate 5 high-quality interview questions with detailed answers:
 
 /**
  * Toggle pin status of a question
- * @route POST /api/questions/toggleQuestion/:id
+ * @route POST /api/questions/:id/toggle-pin
  * @access Private (requires authentication)
  */
 export const togglePinQuestion = async (req, res) => {
     try {
         const questionId = req.params.id;
 
-        // ✅ Validate questionId format (MongoDB ObjectId is 24 hex characters)
+        // ✅ Validate questionId format
         if (!mongoose.Types.ObjectId.isValid(questionId)) {
             return res.status(400).json({
                 message: "Invalid question ID format",
@@ -370,18 +440,18 @@ export const togglePinQuestion = async (req, res) => {
             });
         }
 
-        // ✅ Check if session exists (in case of orphaned question)
+        // ✅ Check if session exists
         if (!question.session) {
-            console.warn('[DB] Orphaned question found:', questionId);
+            console.warn('⚠️  [DB] Orphaned question found:', questionId);
             return res.status(404).json({
                 message: "Session associated with this question not found",
                 success: false
             });
         }
 
-        // ✅ Authorization check - verify user owns the session
+        // ✅ Authorization check
         if (question.session.user.toString() !== req.id) {
-            console.warn('[AUTH] Unauthorized pin toggle attempt:', {
+            console.warn('⚠️  [AUTH] Unauthorized pin toggle attempt:', {
                 questionId,
                 sessionUser: question.session.user.toString(),
                 requestUser: req.id
@@ -392,18 +462,18 @@ export const togglePinQuestion = async (req, res) => {
             });
         }
 
-        // ✅ Store previous state for logging
+        // ✅ Store previous state
         const previousState = question.isPinned;
 
         // ✅ Toggle pin status
         question.isPinned = !question.isPinned;
 
-        // ✅ Save with error handling
+        // ✅ Save
         try {
             await question.save();
-            console.log(`[DB] Question ${questionId} pin status changed: ${previousState} -> ${question.isPinned}`);
+            console.log(`✅ [DB] Question ${questionId} pin status: ${previousState} → ${question.isPinned}`);
         } catch (saveError) {
-            console.error('[DB] Error saving question:', saveError);
+            console.error('❌ [DB] Error saving question:', saveError);
             return res.status(500).json({
                 message: "Failed to update question",
                 error: saveError.message,
@@ -419,7 +489,7 @@ export const togglePinQuestion = async (req, res) => {
         });
         
     } catch (error) {
-        console.error('[ERROR] Error in togglePinQuestion:', {
+        console.error('❌ [ERROR] Error in togglePinQuestion:', {
             message: error.message,
             stack: error.stack,
             questionId: req.params.id
