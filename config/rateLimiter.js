@@ -40,7 +40,7 @@ export const authLimiter = rateLimit({
 // Rate limiter for toggle pin operations
 export const togglePinLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 15, // 50 requests per 15 minutes
+    max: 50, // 50 requests per 15 minutes
     message: {
         success: false,
         message: 'Too many pin/unpin requests. Please try again later'
