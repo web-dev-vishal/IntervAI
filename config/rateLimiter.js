@@ -15,7 +15,7 @@ export const generalLimiter = rateLimit({
 // Strict rate limiter for AI question generation
 export const questionGenerationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // 10 requests per hour
+    max: 20, // 10 requests per hour
     message: {
         success: false,
         message: 'Too many question generation requests. Please try again after 1 hour',

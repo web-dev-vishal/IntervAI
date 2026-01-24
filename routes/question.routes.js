@@ -4,13 +4,13 @@ import {
     regenerateQuestion,
     getQuestionsBySession,
     getQuestionById,
-    addCustomQuestion,
-    updateQuestion,
-    deleteQuestion,
-    togglePinQuestion,
+    searchQuestions,
     getPinnedQuestions,
     getQuestionStats,
-    searchQuestions
+    addCustomQuestion,
+    updateQuestion,
+    togglePinQuestion,
+    deleteQuestion
 } from "../controllers/questionController.js";
 import { AuthMiddleware } from "../middlewares/auth.middleware.js";
 
@@ -21,99 +21,96 @@ const questionRoute = express.Router();
 // ============================================
 
 /**
- * @route   POST /api/questions/generate
- * @desc    Generate 5 interview questions using AI (Groq)
- * @access  Private
- * @body    { role: string, experience: string, topicsToFocus: string[], sessionId: ObjectId }
+ * Generate 5 interview questions using AI
+ * POST /api/questions/generate
+ * Body: { role, experience, topicsToFocus, sessionId }
  */
 questionRoute.post('/generate', AuthMiddleware, generateInterviewQuestion);
 
 /**
- * @route   POST /api/questions/:id/regenerate
- * @desc    Regenerate a single question using AI
- * @access  Private
+ * Regenerate a single question using AI
+ * POST /api/questions/:id/regenerate
+ * Params: id (question ID)
  */
 questionRoute.post('/:id/regenerate', AuthMiddleware, regenerateQuestion);
 
 // ============================================
-// SEARCH & QUERY ROUTES (MUST BE BEFORE :id ROUTES)
+// QUERY ROUTES (GET)
 // ============================================
 
 /**
- * @route   GET /api/questions/search
- * @desc    Search questions across all user sessions
- * @access  Private
- * @query   ?q=searchTerm&limit=20
- */
-questionRoute.get('/search', AuthMiddleware, searchQuestions);
-
-/**
- * @route   GET /api/questions/session/:sessionId/stats
- * @desc    Get question statistics for a session
- * @access  Private
- */
-questionRoute.get('/session/:sessionId/stats', AuthMiddleware, getQuestionStats);
-
-/**
- * @route   GET /api/questions/session/:sessionId/pinned
- * @desc    Get only pinned questions for a session
- * @access  Private
- */
-questionRoute.get('/session/:sessionId/pinned', AuthMiddleware, getPinnedQuestions);
-
-/**
- * @route   GET /api/questions/session/:sessionId
- * @desc    Get all questions for a specific session
- * @access  Private
+ * Get all questions for a session
+ * GET /api/questions/session/:sessionId
+ * Params: sessionId
  */
 questionRoute.get('/session/:sessionId', AuthMiddleware, getQuestionsBySession);
 
 /**
- * @route   GET /api/questions/:id
- * @desc    Get a single question by ID
- * @access  Private
+ * Get pinned questions for a session
+ * GET /api/questions/session/:sessionId/pinned
+ * Params: sessionId
+ */
+questionRoute.get('/session/:sessionId/pinned', AuthMiddleware, getPinnedQuestions);
+
+/**
+ * Get question statistics for a session
+ * GET /api/questions/session/:sessionId/stats
+ * Params: sessionId
+ */
+questionRoute.get('/session/:sessionId/stats', AuthMiddleware, getQuestionStats);
+
+/**
+ * Search questions across all user sessions
+ * GET /api/questions/search
+ * Query: ?q=searchTerm&limit=20
+ */
+questionRoute.get('/search', AuthMiddleware, searchQuestions);
+
+/**
+ * Get single question by ID
+ * GET /api/questions/:id
+ * Params: id (question ID)
  */
 questionRoute.get('/:id', AuthMiddleware, getQuestionById);
 
 // ============================================
-// CREATE ROUTES
+// CREATE ROUTES (POST)
 // ============================================
 
 /**
- * @route   POST /api/questions/custom
- * @desc    Add a custom question manually (without AI)
- * @access  Private
- * @body    { sessionId: ObjectId, question: string, answer: string }
+ * Add custom question manually (without AI)
+ * POST /api/questions/custom
+ * Body: { sessionId, question, answer }
  */
 questionRoute.post('/custom', AuthMiddleware, addCustomQuestion);
 
 // ============================================
-// UPDATE ROUTES
+// UPDATE ROUTES (PUT/PATCH)
 // ============================================
 
 /**
- * @route   PUT /api/questions/:id
- * @desc    Update a question's content
- * @access  Private
- * @body    { question?: string, answer?: string }
+ * Update a question
+ * PUT /api/questions/:id
+ * Params: id (question ID)
+ * Body: { question?, answer? }
  */
 questionRoute.put('/:id', AuthMiddleware, updateQuestion);
 
 /**
- * @route   PATCH /api/questions/:id/toggle-pin
- * @desc    Toggle pin status of a question
- * @access  Private
+ * Toggle pin status of a question
+ * PATCH /api/questions/:id/toggle-pin
+ * Params: id (question ID)
  */
 questionRoute.patch('/:id/toggle-pin', AuthMiddleware, togglePinQuestion);
 
 // ============================================
-// DELETE ROUTES
+// DELETE ROUTES (DELETE)
 // ============================================
 
 /**
- * @route   DELETE /api/questions/:id
- * @desc    Delete a single question
- * @access  Private
+ * Delete a question
+ * DELETE /api/questions/:id
+ * Params: id (question ID)
  */
 questionRoute.delete('/:id', AuthMiddleware, deleteQuestion);
 
