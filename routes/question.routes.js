@@ -77,14 +77,6 @@ questionRoute.put('/:id', AuthMiddleware, updateQuestion);
  */
 questionRoute.delete('/:id', AuthMiddleware, deleteQuestion);
 
-/**
- * @route   DELETE /api/questions/bulk
- * @desc    Delete multiple questions
- * @access  Private
- * @body    { questionIds: [] }
- */
-questionRoute.delete('/bulk/delete', AuthMiddleware, bulkDeleteQuestions);
-
 // ============================================
 // PIN MANAGEMENT ROUTES
 // ============================================
