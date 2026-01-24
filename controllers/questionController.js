@@ -876,7 +876,7 @@ export const getQuestionStats = async (req, res) => {
 // CREATE FUNCTIONS
 // ============================================
 
-/**
+/* ✅
  * Add custom question manually (without AI)
  * @route POST /api/questions/custom
  * @access Private
