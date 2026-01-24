@@ -979,7 +979,7 @@ export const addCustomQuestion = async (req, res) => {
 // UPDATE FUNCTIONS
 // ============================================
 
-/**
+/* ✅
  * Update a question
  * @route PUT /api/questions/:id
  * @access Private
