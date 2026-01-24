@@ -7,6 +7,7 @@ import { connectDB } from "./config/db.js";
 import userRouter from "./routes/user.routes.js";
 import sessionRouter from "./routes/session.routes.js";
 import questionRoute from "./routes/question.routes.js";
+import { authLimiter, generalLimiter, questionGenerationLimiter, } from "./config/rateLimiter.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,10 +17,13 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate Limiter
+app.use(generalLimiter)
+
 // Routes
-app.use("/api/v1/user", userRouter);
+app.use("/api/v1/user", userRouter, authLimiter);
 app.use("/api/v1/session", sessionRouter);
-app.use("/api/v1/question", questionRoute);
+app.use("/api/v1/question", questionRoute, questionGenerationLimiter);
 
 // Health check route
 app.get('/health', (req, res) => {
