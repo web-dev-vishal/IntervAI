@@ -647,68 +647,6 @@ export const updateQuestion = async (req, res) => {
     }
 };
 
-/**
- * Delete a single question
- * @route DELETE /api/questions/:id
- * @access Private (requires authentication)
- */
-export const deleteQuestion = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Validate question ID
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                message: "Invalid question ID format",
-                success: false
-            });
-        }
-
-        // Find question
-        const question = await Question.findById(id).populate({
-            path: 'session',
-            select: 'user'
-        });
-
-        if (!question) {
-            return res.status(404).json({
-                message: "Question not found",
-                success: false
-            });
-        }
-
-        // Authorization check
-        if (question.session.user.toString() !== req.id) {
-            return res.status(403).json({
-                message: "You don't have permission to delete this question",
-                success: false
-            });
-        }
-
-        // Remove question reference from session
-        await Session.findByIdAndUpdate(
-            question.session._id,
-            { $pull: { questions: id } }
-        );
-
-        // Delete question
-        await Question.findByIdAndDelete(id);
-
-        return res.status(200).json({
-            message: "Question deleted successfully",
-            success: true,
-            deletedQuestionId: id
-        });
-
-    } catch (error) {
-        console.error('Error in deleteQuestion:', error);
-        return res.status(500).json({
-            message: "Error deleting question",
-            error: error.message,
-            success: false
-        });
-    }
-};
 
 /**
  * Delete multiple questions (bulk delete)
