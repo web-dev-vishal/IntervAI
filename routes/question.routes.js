@@ -22,9 +22,9 @@ const questionRoute = express.Router();
 
 /**
  * @route   POST /api/questions/generate
- * @desc    Generate interview questions using AI
+ * @desc    Generate 5 interview questions using AI (Groq)
  * @access  Private
- * @body    { role, experience, topicsToFocus, sessionId }
+ * @body    { role: string, experience: string, topicsToFocus: string[], sessionId: ObjectId }
  */
 questionRoute.post('/generate', AuthMiddleware, generateInterviewQuestion);
 
@@ -36,14 +36,35 @@ questionRoute.post('/generate', AuthMiddleware, generateInterviewQuestion);
 questionRoute.post('/:id/regenerate', AuthMiddleware, regenerateQuestion);
 
 // ============================================
-// CRUD ROUTES
+// SEARCH & QUERY ROUTES (MUST BE BEFORE :id ROUTES)
 // ============================================
+
+/**
+ * @route   GET /api/questions/search
+ * @desc    Search questions across all user sessions
+ * @access  Private
+ * @query   ?q=searchTerm&limit=20
+ */
+questionRoute.get('/search', AuthMiddleware, searchQuestions);
+
+/**
+ * @route   GET /api/questions/session/:sessionId/stats
+ * @desc    Get question statistics for a session
+ * @access  Private
+ */
+questionRoute.get('/session/:sessionId/stats', AuthMiddleware, getQuestionStats);
+
+/**
+ * @route   GET /api/questions/session/:sessionId/pinned
+ * @desc    Get only pinned questions for a session
+ * @access  Private
+ */
+questionRoute.get('/session/:sessionId/pinned', AuthMiddleware, getPinnedQuestions);
 
 /**
  * @route   GET /api/questions/session/:sessionId
  * @desc    Get all questions for a specific session
  * @access  Private
- * @query   ?isPinned=true&search=react&sortBy=createdAt&order=desc
  */
 questionRoute.get('/session/:sessionId', AuthMiddleware, getQuestionsBySession);
 
@@ -54,32 +75,29 @@ questionRoute.get('/session/:sessionId', AuthMiddleware, getQuestionsBySession);
  */
 questionRoute.get('/:id', AuthMiddleware, getQuestionById);
 
+// ============================================
+// CREATE ROUTES
+// ============================================
+
 /**
  * @route   POST /api/questions/custom
  * @desc    Add a custom question manually (without AI)
  * @access  Private
- * @body    { sessionId, question, answer }
+ * @body    { sessionId: ObjectId, question: string, answer: string }
  */
 questionRoute.post('/custom', AuthMiddleware, addCustomQuestion);
 
+// ============================================
+// UPDATE ROUTES
+// ============================================
+
 /**
  * @route   PUT /api/questions/:id
- * @desc    Update a question
+ * @desc    Update a question's content
  * @access  Private
- * @body    { question?, answer? }
+ * @body    { question?: string, answer?: string }
  */
 questionRoute.put('/:id', AuthMiddleware, updateQuestion);
-
-/**
- * @route   DELETE /api/questions/:id
- * @desc    Delete a single question
- * @access  Private
- */
-questionRoute.delete('/:id', AuthMiddleware, deleteQuestion);
-
-// ============================================
-// PIN MANAGEMENT ROUTES
-// ============================================
 
 /**
  * @route   PATCH /api/questions/:id/toggle-pin
@@ -88,30 +106,15 @@ questionRoute.delete('/:id', AuthMiddleware, deleteQuestion);
  */
 questionRoute.patch('/:id/toggle-pin', AuthMiddleware, togglePinQuestion);
 
-/**
- * @route   GET /api/questions/session/:sessionId/pinned
- * @desc    Get only pinned questions for a session
- * @access  Private
- */
-questionRoute.get('/session/:sessionId/pinned', AuthMiddleware, getPinnedQuestions);
-
 // ============================================
-// ANALYTICS & UTILITY ROUTES
+// DELETE ROUTES
 // ============================================
 
 /**
- * @route   GET /api/questions/session/:sessionId/stats
- * @desc    Get question statistics for a session
+ * @route   DELETE /api/questions/:id
+ * @desc    Delete a single question
  * @access  Private
  */
-questionRoute.get('/session/:sessionId/stats', AuthMiddleware, getQuestionStats);
-
-/**
- * @route   GET /api/questions/search
- * @desc    Search questions across all user sessions
- * @access  Private
- * @query   ?q=searchTerm&limit=20
- */
-questionRoute.get('/search/all', AuthMiddleware, searchQuestions);
+questionRoute.delete('/:id', AuthMiddleware, deleteQuestion);
 
 export default questionRoute;

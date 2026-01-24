@@ -3,7 +3,10 @@ import { Session } from "../models/session.model.js";
 import { Question } from "../models/question.model.js";
 import mongoose from "mongoose";
 
-// Singleton instance for Groq client
+// ============================================
+// GROQ CLIENT SETUP
+// ============================================
+
 let groqInstance = null;
 
 /**
@@ -22,6 +25,10 @@ const getGroqClient = () => {
     groqInstance = new Groq({ apiKey: apiKey.trim() });
     return groqInstance;
 };
+
+// ============================================
+// AI GENERATION FUNCTIONS
+// ============================================
 
 /**
  * Generate interview questions using Groq AI
@@ -248,172 +255,6 @@ Now generate 5 high-quality interview questions with detailed answers:`;
 };
 
 /**
- * Get all questions for a session
- * @route GET /api/questions/session/:sessionId
- */
-export const getQuestionsBySession = async (req, res) => {
-    try {
-        const { sessionId } = req.params;
-
-        // Validate session ID
-        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
-            return res.status(400).json({
-                message: "Invalid session ID format",
-                success: false
-            });
-        }
-
-        // Find session and verify ownership
-        const session = await Session.findById(sessionId);
-        if (!session) {
-            return res.status(404).json({
-                message: "Session not found",
-                success: false
-            });
-        }
-
-        if (session.user.toString() !== req.id) {
-            return res.status(403).json({
-                message: "You don't have permission to view these questions",
-                success: false
-            });
-        }
-
-        // Get questions
-        const questions = await Question.find({ session: sessionId }).sort({ createdAt: 1 });
-
-        return res.status(200).json({
-            message: "Questions retrieved successfully",
-            success: true,
-            count: questions.length,
-            questions
-        });
-
-    } catch (error) {
-        console.error('Error in getQuestionsBySession:', error);
-        return res.status(500).json({
-            message: "Error retrieving questions",
-            error: error.message,
-            success: false
-        });
-    }
-};
-
-/**
- * Get single question by ID
- * @route GET /api/questions/:id
- */
-export const getQuestionById = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Validate question ID
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                message: "Invalid question ID format",
-                success: false
-            });
-        }
-
-        // Find question
-        const question = await Question.findById(id).populate({
-            path: 'session',
-            select: 'user role experience'
-        });
-
-        if (!question) {
-            return res.status(404).json({
-                message: "Question not found",
-                success: false
-            });
-        }
-
-        // Authorization check
-        if (question.session.user.toString() !== req.id) {
-            return res.status(403).json({
-                message: "You don't have permission to view this question",
-                success: false
-            });
-        }
-
-        return res.status(200).json({
-            message: "Question retrieved successfully",
-            success: true,
-            question
-        });
-
-    } catch (error) {
-        console.error('Error in getQuestionById:', error);
-        return res.status(500).json({
-            message: "Error retrieving question",
-            error: error.message,
-            success: false
-        });
-    }
-};
-
-/**
- * Delete a question
- * @route DELETE /api/questions/:id
- */
-export const deleteQuestion = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Validate question ID
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                message: "Invalid question ID format",
-                success: false
-            });
-        }
-
-        // Find question
-        const question = await Question.findById(id).populate({
-            path: 'session',
-            select: 'user'
-        });
-
-        if (!question) {
-            return res.status(404).json({
-                message: "Question not found",
-                success: false
-            });
-        }
-
-        // Authorization check
-        if (question.session.user.toString() !== req.id) {
-            return res.status(403).json({
-                message: "You don't have permission to delete this question",
-                success: false
-            });
-        }
-
-        // Remove question from session
-        await Session.findByIdAndUpdate(
-            question.session._id,
-            { $pull: { questions: id } }
-        );
-
-        // Delete question
-        await Question.findByIdAndDelete(id);
-
-        return res.status(200).json({
-            message: "Question deleted successfully",
-            success: true
-        });
-
-    } catch (error) {
-        console.error('Error in deleteQuestion:', error);
-        return res.status(500).json({
-            message: "Error deleting question",
-            error: error.message,
-            success: false
-        });
-    }
-};
-
-/**
  * Regenerate a question
  * @route POST /api/questions/:id/regenerate
  */
@@ -576,6 +417,115 @@ Generate 1 high-quality interview question with a detailed answer:`;
     }
 };
 
+// ============================================
+// QUERY FUNCTIONS
+// ============================================
+
+/**
+ * Get all questions for a session
+ * @route GET /api/questions/session/:sessionId
+ */
+export const getQuestionsBySession = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+
+        // Validate session ID
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({
+                message: "Invalid session ID format",
+                success: false
+            });
+        }
+
+        // Find session and verify ownership
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                message: "Session not found",
+                success: false
+            });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to view these questions",
+                success: false
+            });
+        }
+
+        // Get questions
+        const questions = await Question.find({ session: sessionId }).sort({ createdAt: 1 });
+
+        return res.status(200).json({
+            message: "Questions retrieved successfully",
+            success: true,
+            count: questions.length,
+            questions
+        });
+
+    } catch (error) {
+        console.error('Error in getQuestionsBySession:', error);
+        return res.status(500).json({
+            message: "Error retrieving questions",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+/**
+ * Get single question by ID
+ * @route GET /api/questions/:id
+ */
+export const getQuestionById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate question ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid question ID format",
+                success: false
+            });
+        }
+
+        // Find question
+        const question = await Question.findById(id).populate({
+            path: 'session',
+            select: 'user role experience'
+        });
+
+        if (!question) {
+            return res.status(404).json({
+                message: "Question not found",
+                success: false
+            });
+        }
+
+        // Authorization check
+        if (question.session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to view this question",
+                success: false
+            });
+        }
+
+        return res.status(200).json({
+            message: "Question retrieved successfully",
+            success: true,
+            question
+        });
+
+    } catch (error) {
+        console.error('Error in getQuestionById:', error);
+        return res.status(500).json({
+            message: "Error retrieving question",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
 /**
  * Search questions across all sessions
  * @route GET /api/questions/search
@@ -631,6 +581,401 @@ export const searchQuestions = async (req, res) => {
         console.error('Error in searchQuestions:', error);
         return res.status(500).json({
             message: "Error searching questions",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+/**
+ * Get only pinned questions for a session
+ * @route GET /api/questions/session/:sessionId/pinned
+ */
+export const getPinnedQuestions = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+
+        // Validate session ID
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({
+                message: "Invalid session ID format",
+                success: false
+            });
+        }
+
+        // Find session and verify ownership
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                message: "Session not found",
+                success: false
+            });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to view these questions",
+                success: false
+            });
+        }
+
+        // Get pinned questions
+        const questions = await Question.find({ 
+            session: sessionId,
+            isPinned: true 
+        }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            message: "Pinned questions retrieved successfully",
+            success: true,
+            count: questions.length,
+            questions
+        });
+
+    } catch (error) {
+        console.error('Error in getPinnedQuestions:', error);
+        return res.status(500).json({
+            message: "Error retrieving pinned questions",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+/**
+ * Get question statistics for a session
+ * @route GET /api/questions/session/:sessionId/stats
+ */
+export const getQuestionStats = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+
+        // Validate session ID
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({
+                message: "Invalid session ID format",
+                success: false
+            });
+        }
+
+        // Find session and verify ownership
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                message: "Session not found",
+                success: false
+            });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to view these statistics",
+                success: false
+            });
+        }
+
+        // Get statistics
+        const totalQuestions = await Question.countDocuments({ session: sessionId });
+        const pinnedQuestions = await Question.countDocuments({ 
+            session: sessionId, 
+            isPinned: true 
+        });
+
+        return res.status(200).json({
+            message: "Statistics retrieved successfully",
+            success: true,
+            stats: {
+                totalQuestions,
+                pinnedQuestions,
+                unpinnedQuestions: totalQuestions - pinnedQuestions,
+                session: {
+                    role: session.role,
+                    experience: session.experience,
+                    topics: session.topicsToFocus
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in getQuestionStats:', error);
+        return res.status(500).json({
+            message: "Error retrieving statistics",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+// ============================================
+// CREATE FUNCTIONS
+// ============================================
+
+/**
+ * Add custom question manually (without AI)
+ * @route POST /api/questions/custom
+ */
+export const addCustomQuestion = async (req, res) => {
+    try {
+        const { sessionId, question, answer } = req.body;
+
+        // Validate required fields
+        if (!sessionId || !question || !answer) {
+            return res.status(400).json({
+                message: "Please provide sessionId, question, and answer",
+                success: false
+            });
+        }
+
+        // Validate sessionId
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({
+                message: "Invalid session ID format",
+                success: false
+            });
+        }
+
+        // Check session exists and belongs to user
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                message: "Session not found",
+                success: false
+            });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to add questions to this session",
+                success: false
+            });
+        }
+
+        // Check question limit
+        if (session.questions && session.questions.length >= 50) {
+            return res.status(400).json({
+                message: "Session has reached maximum number of questions (50)",
+                success: false
+            });
+        }
+
+        // Create question
+        const newQuestion = await Question.create({
+            session: sessionId,
+            question: question.trim(),
+            answer: answer.trim()
+        });
+
+        // Update session
+        await Session.findByIdAndUpdate(
+            sessionId,
+            { $push: { questions: newQuestion._id } }
+        );
+
+        return res.status(201).json({
+            message: "Custom question added successfully",
+            success: true,
+            question: newQuestion
+        });
+
+    } catch (error) {
+        console.error('Error in addCustomQuestion:', error);
+        return res.status(500).json({
+            message: "Error adding custom question",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+// ============================================
+// UPDATE FUNCTIONS
+// ============================================
+
+/**
+ * Update a question
+ * @route PUT /api/questions/:id
+ */
+export const updateQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { question, answer } = req.body;
+
+        // Validate question ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid question ID format",
+                success: false
+            });
+        }
+
+        // At least one field must be provided
+        if (!question && !answer) {
+            return res.status(400).json({
+                message: "Please provide at least one field to update (question or answer)",
+                success: false
+            });
+        }
+
+        // Find question
+        const existingQuestion = await Question.findById(id).populate({
+            path: 'session',
+            select: 'user'
+        });
+
+        if (!existingQuestion) {
+            return res.status(404).json({
+                message: "Question not found",
+                success: false
+            });
+        }
+
+        // Authorization check
+        if (existingQuestion.session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to update this question",
+                success: false
+            });
+        }
+
+        // Update fields
+        if (question) existingQuestion.question = question.trim();
+        if (answer) existingQuestion.answer = answer.trim();
+
+        await existingQuestion.save();
+
+        return res.status(200).json({
+            message: "Question updated successfully",
+            success: true,
+            question: existingQuestion
+        });
+
+    } catch (error) {
+        console.error('Error in updateQuestion:', error);
+        return res.status(500).json({
+            message: "Error updating question",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+/**
+ * Toggle pin status of a question
+ * @route PATCH /api/questions/:id/toggle-pin
+ */
+export const togglePinQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate question ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid question ID format",
+                success: false
+            });
+        }
+
+        // Find question
+        const question = await Question.findById(id).populate({
+            path: 'session',
+            select: 'user'
+        });
+
+        if (!question) {
+            return res.status(404).json({
+                message: "Question not found",
+                success: false
+            });
+        }
+
+        // Authorization check
+        if (question.session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to pin this question",
+                success: false
+            });
+        }
+
+        // Toggle pin status
+        question.isPinned = !question.isPinned;
+        await question.save();
+
+        return res.status(200).json({
+            message: `Question ${question.isPinned ? 'pinned' : 'unpinned'} successfully`,
+            success: true,
+            isPinned: question.isPinned,
+            question
+        });
+
+    } catch (error) {
+        console.error('Error in togglePinQuestion:', error);
+        return res.status(500).json({
+            message: "Error toggling pin status",
+            error: error.message,
+            success: false
+        });
+    }
+};
+
+// ============================================
+// DELETE FUNCTIONS
+// ============================================
+
+/**
+ * Delete a question
+ * @route DELETE /api/questions/:id
+ */
+export const deleteQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate question ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                message: "Invalid question ID format",
+                success: false
+            });
+        }
+
+        // Find question
+        const question = await Question.findById(id).populate({
+            path: 'session',
+            select: 'user'
+        });
+
+        if (!question) {
+            return res.status(404).json({
+                message: "Question not found",
+                success: false
+            });
+        }
+
+        // Authorization check
+        if (question.session.user.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You don't have permission to delete this question",
+                success: false
+            });
+        }
+
+        // Remove question from session
+        await Session.findByIdAndUpdate(
+            question.session._id,
+            { $pull: { questions: id } }
+        );
+
+        // Delete question
+        await Question.findByIdAndDelete(id);
+
+        return res.status(200).json({
+            message: "Question deleted successfully",
+            success: true
+        });
+
+    } catch (error) {
+        console.error('Error in deleteQuestion:', error);
+        return res.status(500).json({
+            message: "Error deleting question",
             error: error.message,
             success: false
         });
