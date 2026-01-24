@@ -37,7 +37,7 @@ const getGroqClient = () => {
 // AI GENERATION FUNCTIONS
 // ============================================
 
-/**
+/* ✅
  * Generate 5 interview questions using Groq AI
  * @route POST /api/questions/generate
  * @access Private
@@ -360,7 +360,7 @@ Now generate 5 high-quality interview questions with detailed answers:`;
     }
 };
 
-/**
+/* ✅
  * Regenerate a single question using AI
  * @route POST /api/questions/:id/regenerate
  * @access Private
@@ -576,7 +576,7 @@ Generate 1 high-quality interview question with a detailed answer:`;
 // QUERY FUNCTIONS
 // ============================================
 
-/**
+/* ✅
  * Get all questions for a session
  * @route GET /api/questions/session/:sessionId
  * @access Private
@@ -631,7 +631,7 @@ export const getQuestionsBySession = async (req, res) => {
     }
 };
 
-/**
+/* ✅
  * Get single question by ID
  * @route GET /api/questions/:id
  * @access Private
@@ -685,7 +685,7 @@ export const getQuestionById = async (req, res) => {
     }
 };
 
-/**
+/* ✅
  * Search questions across all user sessions
  * @route GET /api/questions/search
  * @access Private
@@ -807,7 +807,7 @@ export const getPinnedQuestions = async (req, res) => {
     }
 };
 
-/**
+/* ✅
  * Get question statistics for a session
  * @route GET /api/questions/session/:sessionId/stats
  * @access Private
