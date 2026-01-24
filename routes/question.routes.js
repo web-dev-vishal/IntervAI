@@ -1,16 +1,15 @@
 import express from "express";
 import { 
     generateInterviewQuestion,
+    regenerateQuestion,
     getQuestionsBySession,
     getQuestionById,
     addCustomQuestion,
     updateQuestion,
     deleteQuestion,
-    bulkDeleteQuestions,
     togglePinQuestion,
     getPinnedQuestions,
     getQuestionStats,
-    regenerateQuestion,
     searchQuestions
 } from "../controllers/questionController.js";
 import { AuthMiddleware } from "../middlewares/auth.middleware.js";
