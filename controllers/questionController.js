@@ -9,16 +9,16 @@ const getGroqClient = () => {
     if (groqInstance) return groqInstance;
 
     const apiKey = process.env.GROQ_API_KEY?.trim();
-    
+
     if (!apiKey) {
         console.error('[GROQ] API key missing');
         return null;
     }
-    
+
     if (!apiKey.startsWith('gsk_')) {
         console.warn('[GROQ] Invalid API key format');
     }
-    
+
     groqInstance = new Groq({ apiKey });
     return groqInstance;
 };
@@ -26,7 +26,7 @@ const getGroqClient = () => {
 export const generateInterviewQuestion = async (req, res) => {
     try {
         const groq = getGroqClient();
-        
+
         if (!groq) {
             return res.status(500).json({
                 success: false,
@@ -144,7 +144,7 @@ Format: [{"question": "...", "answer": "..."}]`;
 
         rawText = rawText.replace(/```json|```/gi, "").trim();
         const match = rawText.match(/\[([\s\S]*?)\]/);
-        
+
         if (!match) {
             return res.status(500).json({ success: false, message: "Invalid AI response format" });
         }
@@ -160,14 +160,14 @@ Format: [{"question": "...", "answer": "..."}]`;
             return res.status(500).json({ success: false, message: "Invalid AI data" });
         }
 
-        const validQuestions = data.filter(q => 
-            q && 
-            typeof q === 'object' && 
-            q.question && 
-            typeof q.question === 'string' && 
+        const validQuestions = data.filter(q =>
+            q &&
+            typeof q === 'object' &&
+            q.question &&
+            typeof q.question === 'string' &&
             q.question.trim() !== '' &&
-            q.answer && 
-            typeof q.answer === 'string' && 
+            q.answer &&
+            typeof q.answer === 'string' &&
             q.answer.trim() !== ''
         ).slice(0, 5);
 
@@ -237,7 +237,7 @@ export const regenerateQuestion = async (req, res) => {
         }
 
         const { role, experience, topicsToFocus } = question.session;
-        
+
         if (!role || !experience || !topicsToFocus) {
             return res.status(400).json({ success: false, message: "Session missing required fields" });
         }
@@ -278,7 +278,7 @@ Return ONLY valid JSON array: [{"question": "...", "answer": "..."}]`;
 
         rawText = rawText.replace(/```json|```/gi, "").trim();
         const arrayMatch = rawText.match(/\[[\s\S]*\]/);
-        
+
         if (!arrayMatch) {
             return res.status(500).json({ success: false, message: "Invalid AI response format" });
         }
@@ -323,4 +323,27 @@ export const getQuestionsBySession = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid session ID" });
         }
 
-        const session =
+        const session = await Session.findById(sessionId).select('user').lean();
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        const questions = await Question.find({ session: sessionId })
+            .sort({ createdAt: 1 })
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            message: "Questions retrieved successfully",
+            count: questions.length,
+            data: { questions }
+        });
+
+    } catch (error) {
+        console.error('[getQuestionsBySession]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
