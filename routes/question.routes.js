@@ -16,10 +16,6 @@ import { AuthMiddleware } from "../middlewares/auth.middleware.js";
 
 const questionRoute = express.Router();
 
-// ============================================
-// AI GENERATION ROUTES
-// ============================================
-
 /**
  * Generate 5 interview questions using AI
  * POST /api/questions/generate
