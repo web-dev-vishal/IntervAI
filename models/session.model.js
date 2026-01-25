@@ -11,7 +11,17 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Role is required'],
         enum: {
-            values: ['interviewer', 'interviewee', 'mock-interview', 'practice','Backend Developer', 'Frontend Developer'],
+            values: [
+                'interviewer',
+                'interviewee',
+                'mock-interview',
+                'practice',
+                'Backend Developer',
+                'Frontend Developer',
+                'Full Stack Developer',
+                'DevOps Engineer',
+                'Data Scientist'
+            ],
             message: '{VALUE} is not a valid role'
         },
         trim: true
@@ -36,23 +46,29 @@ const sessionSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['pending', 'in-progress', 'completed', 'cancelled'],
-        default: 'pending'
+        enum: {
+            values: ['pending', 'in-progress', 'completed', 'cancelled'],
+            message: '{VALUE} is not a valid status'
+        },
+        default: 'pending',
+        index: true
     },
     duration: {
-        type: Number, // in minutes
+        type: Number,
         min: [1, 'Duration must be at least 1 minute'],
-        max: [300, 'Duration cannot exceed 300 minutes']
+        max: [300, 'Duration cannot exceed 300 minutes'],
+        default: 60
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    versionKey: false,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
-// Compound index for efficient querying
 sessionSchema.index({ user: 1, createdAt: -1 });
-sessionSchema.index({ status: 1 });
+sessionSchema.index({ user: 1, status: 1 });
 
-// Virtual for question count
 sessionSchema.virtual('questionCount').get(function() {
     return this.questions ? this.questions.length : 0;
 });

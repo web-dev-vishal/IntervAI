@@ -14,8 +14,9 @@ const userSchema = new mongoose.Schema({
         unique: true,
         lowercase: true,
         trim: true,
+        index: true,
         match: [
-            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
             'Please enter a valid email address'
         ]
     },
@@ -26,7 +27,10 @@ const userSchema = new mongoose.Schema({
         select: false
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    versionKey: false
 });
+
+userSchema.index({ email: 1 });
 
 export const User = mongoose.model("User", userSchema);
