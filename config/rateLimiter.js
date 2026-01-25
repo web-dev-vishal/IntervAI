@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 // General rate limiter for all API routes
 export const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per 15 minutes
+    max: 25, // 25 requests per 15 minutes
     message: {
         success: false,
         message: 'Too many requests from this IP, please try again after 15 minutes'
@@ -15,7 +15,7 @@ export const generalLimiter = rateLimit({
 // Strict rate limiter for AI question generation
 export const questionGenerationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // 10 requests per hour
+    max: 10, // 10 requests per hour
     message: {
         success: false,
         message: 'Too many question generation requests. Please try again after 1 hour',
@@ -40,7 +40,7 @@ export const authLimiter = rateLimit({
 // Rate limiter for toggle pin operations
 export const togglePinLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 50, // 50 requests per 15 minutes
+    max: 10, // 10 requests per 15 minutes
     message: {
         success: false,
         message: 'Too many pin/unpin requests. Please try again later'
