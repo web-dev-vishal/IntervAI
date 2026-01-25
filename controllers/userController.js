@@ -1,4 +1,4 @@
-import { User } from "../models/User.model.js";
+import { User } from "../models/user.model.js";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -7,67 +7,80 @@ export const register = async (req, res) => {
         const { fullname, email, password } = req.body;
 
         if (!fullname || !email || !password) {
-            return res.status(401).json({
-                message: "Please provide all the values",
-                success: false
+            return res.status(400).json({
+                success: false,
+                message: "fullname, email, and password required"
             });
         }
 
-        const user = await User.findOne({ email });
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email format"
+            });
+        }
 
-        if (user) {
-            return res.status(401).json({
-                message: "User already registered",
-                success: false
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters"
+            });
+        }
+
+        const existingUser = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: "Email already registered"
             });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await User.create({
-            fullname,
-            email,
+            fullname: fullname.trim(),
+            email: email.toLowerCase().trim(),
             password: hashedPassword
         });
 
         return res.status(201).json({
-            message: "User registered successfully",
-            success: true
+            success: true,
+            message: "User registered successfully"
         });
     } catch (error) {
-        res.status(500).json({ message: "Error registering user", error: err.message });
+        console.error('[register]', error);
         return res.status(500).json({
-            message: "Internal server error",
-            success: false
+            success: false,
+            message: "Internal server error"
         });
     }
 };
 
-
-export const Login = async (req, res) => {
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(401).json({
-                message: "Please provide all the values",
-                success: false
+            return res.status(400).json({
+                success: false,
+                message: "email and password required"
             });
         }
 
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
 
         if (!user) {
             return res.status(401).json({
-                message: "Invalid credentials",
-                success: false
+                success: false,
+                message: "Invalid credentials"
             });
         }
 
         if (!user.password) {
             return res.status(500).json({
-                message: "Password not found in database",
-                success: false
+                success: false,
+                message: "Account error. Contact support"
             });
         }
 
@@ -75,103 +88,123 @@ export const Login = async (req, res) => {
 
         if (!isPasswordMatch) {
             return res.status(401).json({
-                message: "Invalid credentials",
-                success: false
+                success: false,
+                message: "Invalid credentials"
             });
         }
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+        const token = jwt.sign(
+            { userId: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
-        return res.cookie('token', token, { httpOnly: true }).json({
-            message: `${user.fullname} logged in successfully`,
-            success: true,
-            user
-        });
-    } catch (err) {
-        res.status(500).json({ message: "Error login user", error: err.message });
+        const userResponse = user.toObject();
+        delete userResponse.password;
+
+        return res
+            .cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000
+            })
+            .json({
+                success: true,
+                message: `Welcome back, ${user.fullname}`,
+                data: { user: userResponse }
+            });
+    } catch (error) {
+        console.error('[login]', error);
         return res.status(500).json({
-            message: "Internal server error",
             success: false,
-            error: err.message
+            message: "Internal server error"
         });
     }
 };
 
-export const logOut = (req, res) => {
-    res.clearCookie("token", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-    });
+export const logout = (req, res) => {
+    try {
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
 
-    return res.status(200).json({
-        success: true,
-        message: "User logged out successfully",
-    });
+        return res.status(200).json({
+            success: true,
+            message: "Logged out successfully"
+        });
+    } catch (error) {
+        console.error('[logout]', error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
 };
-
 
 export const getUser = async (req, res) => {
     try {
         const userId = req.id;
-        const user = await User.findById(userId);
+        const user = await User.findById(userId).lean();
 
         if (!user) {
             return res.status(404).json({
-                message: "User not found",
-                success: false
+                success: false,
+                message: "User not found"
             });
         }
 
         return res.status(200).json({
-            user,
-            success: true
+            success: true,
+            message: "User retrieved successfully",
+            data: { user }
         });
     } catch (error) {
-        res.status(500).json({ message: "Error get user", error: err.message });
+        console.error('[getUser]', error);
         return res.status(500).json({
-            message: "Internal server error",
-            success: false
+            success: false,
+            message: "Internal server error"
         });
     }
 };
 
-
 export const updateProfile = async (req, res) => {
     try {
         const userId = req.id;
-        const { fullname } = req.body || {};
+        const { fullname } = req.body;
 
-        if (!fullname) {
+        if (!fullname || fullname.trim().length === 0) {
             return res.status(400).json({
-                message: "Please provide fullName to update",
-                success: false
+                success: false,
+                message: "fullname required"
             });
         }
 
         const user = await User.findByIdAndUpdate(
             userId,
-            { fullname },
+            { fullname: fullname.trim() },
             { new: true, runValidators: true }
-        );
+        ).lean();
 
         if (!user) {
             return res.status(404).json({
-                message: "User not found",
-                success: false
+                success: false,
+                message: "User not found"
             });
         }
 
         return res.status(200).json({
-            message: "Profile updated successfully",
             success: true,
-            user
+            message: "Profile updated successfully",
+            data: { user }
         });
     } catch (error) {
-        res.status(500).json({ message: "Error Update user", error: err.message });
+        console.error('[updateProfile]', error);
         return res.status(500).json({
-            message: "Internal server error",
-            success: false
+            success: false,
+            message: "Internal server error"
         });
     }
 };
