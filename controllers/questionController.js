@@ -376,3 +376,47 @@ export const getQuestionById = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+export const searchQuestions = async (req, res) => {
+    try {
+        const { q, limit = 20 } = req.query;
+        if (!q || q.trim().length === 0) {
+            return res.status(400).json({ success: false, message: "Search query required" });
+        }
+
+        const userSessions = await Session.find({ user: req.id }).select('_id').lean();
+        const sessionIds = userSessions.map(s => s._id);
+
+        if (sessionIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No sessions found",
+                count: 0,
+                data: { questions: [] }
+            });
+        }
+
+        const questions = await Question.find({
+            session: { $in: sessionIds },
+            $or: [
+                { question: { $regex: q.trim(), $options: 'i' } },
+                { answer: { $regex: q.trim(), $options: 'i' } }
+            ]
+        })
+            .populate('session', 'role experience topicsToFocus')
+            .limit(Math.min(parseInt(limit), 100))
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            message: "Search completed",
+            count: questions.length,
+            data: { questions, searchQuery: q }
+        });
+
+    } catch (error) {
+        console.error('[searchQuestions]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
