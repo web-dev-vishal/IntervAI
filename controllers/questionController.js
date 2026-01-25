@@ -420,3 +420,40 @@ export const searchQuestions = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+export const getPinnedQuestions = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({ success: false, message: "Invalid session ID" });
+        }
+
+        const session = await Session.findById(sessionId).select('user').lean();
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        const questions = await Question.find({
+            session: sessionId,
+            isPinned: true
+        })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            message: "Pinned questions retrieved",
+            count: questions.length,
+            data: { questions }
+        });
+
+    } catch (error) {
+        console.error('[getPinnedQuestions]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
