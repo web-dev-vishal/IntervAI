@@ -1,12 +1,20 @@
 import express from 'express';
 import { AuthMiddleware } from '../middlewares/auth.middleware.js';
-import { getUser, Login, logOut, register, updateProfile } from '../controllers/userController.js';
-const userRouter = express.Router();
+import { 
+    getUser, 
+    login, 
+    logout, 
+    register, 
+    updateProfile 
+} from '../controllers/userController.js';
+import { authLimiter } from '../middlewares/rateLimiter.js';
 
-userRouter.route('/register').post(register);
-userRouter.route('/login').post(Login);
-userRouter.route('/getUser').get(AuthMiddleware, getUser);
-userRouter.route('/logout').post(AuthMiddleware, logOut);
-userRouter.route('/updateProfile').post(AuthMiddleware, updateProfile);
+const router = express.Router();
 
-export default userRouter;
+router.post('/register', authLimiter, register);
+router.post('/login', authLimiter, login);
+router.post('/logout', AuthMiddleware, logout);
+router.get('/profile', AuthMiddleware, getUser);
+router.put('/profile', AuthMiddleware, updateProfile);
+
+export default router;
