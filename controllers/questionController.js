@@ -605,3 +605,73 @@ export const updateQuestion = async (req, res) => {
     }
 };
 
+export const togglePinQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid question ID" });
+        }
+
+        const question = await Question.findById(id).populate('session', 'user');
+
+        if (!question) {
+            return res.status(404).json({ success: false, message: "Question not found" });
+        }
+
+        if (!question.session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (question.session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        question.isPinned = !question.isPinned;
+        await question.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Question ${question.isPinned ? 'pinned' : 'unpinned'}`,
+            data: {
+                isPinned: question.isPinned,
+                question
+            }
+        });
+
+    } catch (error) {
+        console.error('[togglePinQuestion]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const deleteQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid question ID" });
+        }
+
+        const question = await Question.findById(id).populate('session', 'user');
+
+        if (!question) {
+            return res.status(404).json({ success: false, message: "Question not found" });
+        }
+
+        if (!question.session || question.session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        await Session.findByIdAndUpdate(question.session._id, { $pull: { questions: id } });
+        await Question.findByIdAndDelete(id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Question deleted",
+            data: { deletedId: id }
+        });
+
+    } catch (error) {
+        console.error('[deleteQuestion]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
