@@ -347,3 +347,32 @@ export const getQuestionsBySession = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
+
+export const getQuestionById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid question ID" });
+        }
+
+        const question = await Question.findById(id).populate('session', 'user role experience topicsToFocus');
+
+        if (!question) {
+            return res.status(404).json({ success: false, message: "Question not found" });
+        }
+
+        if (!question.session || question.session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Question retrieved successfully",
+            data: { question }
+        });
+
+    } catch (error) {
+        console.error('[getQuestionById]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
