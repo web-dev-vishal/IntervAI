@@ -18,11 +18,11 @@ import {
 //adding routes
 const router = express.Router();
 
-router.post('/register', authLimiter, register);
-router.post('/login', authLimiter, login);
-router.post('/logout', AuthMiddleware, logout);
-router.get('/profile', AuthMiddleware, getUser);
-router.put('/profile', AuthMiddleware, updateProfile);
+router.post('/register', authLimiter, register); //register User
+router.post('/login', authLimiter, login); //login User
+router.post('/logout', AuthMiddleware, logout); //logout User
+router.get('/profile', AuthMiddleware, getUser); //Get User
+router.put('/profile', AuthMiddleware, updateProfile); //Update User
 
 //exporting rotes 
 export default router;
