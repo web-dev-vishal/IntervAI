@@ -112,8 +112,16 @@
 
 // export default questionRoute;
 
-// 
+//import express
 import express from "express";
+
+// import middleware
+import { AuthMiddleware } from "../middlewares/auth.middleware.js";
+
+// import ratelimiter
+import { questionGenerationLimiter, togglePinLimiter } from "../middlewares/rateLimiter.js";
+
+//import controller
 import { 
     generateInterviewQuestion,
     regenerateQuestion,
@@ -127,12 +135,14 @@ import {
     togglePinQuestion,
     deleteQuestion
 } from "../controllers/questionController.js";
-import { AuthMiddleware } from "../middlewares/auth.middleware.js";
-import { questionGenerationLimiter, togglePinLimiter } from "../middlewares/rateLimiter.js";
 
+// adding routes
 const router = express.Router();
 
+// Generate 5 interview questions from AI
 router.post('/generate', AuthMiddleware, questionGenerationLimiter, generateInterviewQuestion);
+
+// 
 router.post('/:id/regenerate', AuthMiddleware, questionGenerationLimiter, regenerateQuestion);
 router.get('/session/:sessionId', AuthMiddleware, getQuestionsBySession);
 router.get('/session/:sessionId/pinned', AuthMiddleware, getPinnedQuestions);
@@ -144,4 +154,5 @@ router.put('/:id', AuthMiddleware, updateQuestion);
 router.patch('/:id/toggle-pin', AuthMiddleware, togglePinLimiter, togglePinQuestion);
 router.delete('/:id', AuthMiddleware, deleteQuestion);
 
+//exporting routes
 export default router;
