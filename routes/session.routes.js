@@ -1,7 +1,7 @@
 //import express  
 import express from "express";
 
-//import Contoller
+//import all Contollers
 import { 
     createSession, 
     deleteSession, 

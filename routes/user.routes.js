@@ -1,12 +1,11 @@
 //import express  
 import express from 'express';
 
-//import Middleware
+//import Middlewares
 import { AuthMiddleware } from '../middlewares/auth.middleware.js';
-
 import { authLimiter } from '../middlewares/rateLimiter.js';
 
-//import Contoller
+//import all Contollers
 import { 
     getUser, 
     login, 

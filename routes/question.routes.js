@@ -4,10 +4,10 @@ import express from "express";
 // import middleware
 import { AuthMiddleware } from "../middlewares/auth.middleware.js";
 
-// import ratelimiter
+// import ratelimiters
 import { questionGenerationLimiter, togglePinLimiter } from "../middlewares/rateLimiter.js";
 
-//import controller
+//import all controllers
 import { 
     generateInterviewQuestion,
     regenerateQuestion,
