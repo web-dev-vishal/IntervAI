@@ -457,3 +457,151 @@ export const getPinnedQuestions = async (req, res) => {
     }
 };
 
+export const getQuestionStats = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({ success: false, message: "Invalid session ID" });
+        }
+
+        const session = await Session.findById(sessionId).select('user role experience topicsToFocus').lean();
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        const [totalQuestions, pinnedQuestions] = await Promise.all([
+            Question.countDocuments({ session: sessionId }),
+            Question.countDocuments({ session: sessionId, isPinned: true })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: "Statistics retrieved",
+            data: {
+                stats: {
+                    total: totalQuestions,
+                    pinned: pinnedQuestions,
+                    unpinned: totalQuestions - pinnedQuestions
+                },
+                session: {
+                    role: session.role,
+                    experience: session.experience,
+                    topics: session.topicsToFocus
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[getQuestionStats]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const addCustomQuestion = async (req, res) => {
+    try {
+        const { sessionId, question, answer } = req.body;
+        if (!sessionId || !question || !answer) {
+            return res.status(400).json({
+                success: false,
+                message: "sessionId, question, and answer required"
+            });
+        }
+
+        if (typeof question !== 'string' || question.trim().length === 0) {
+            return res.status(400).json({ success: false, message: "Question must be non-empty string" });
+        }
+
+        if (typeof answer !== 'string' || answer.trim().length === 0) {
+            return res.status(400).json({ success: false, message: "Answer must be non-empty string" });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+            return res.status(400).json({ success: false, message: "Invalid session ID" });
+        }
+
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        if (session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        const questionCount = await Question.countDocuments({ session: sessionId });
+        if (questionCount >= 50) {
+            return res.status(400).json({ success: false, message: "Session reached maximum of 50 questions" });
+        }
+
+        const newQuestion = await Question.create({
+            session: sessionId,
+            question: question.trim(),
+            answer: answer.trim(),
+            isPinned: false
+        });
+
+        await Session.findByIdAndUpdate(sessionId, { $push: { questions: newQuestion._id } });
+
+        return res.status(201).json({
+            success: true,
+            message: "Custom question added",
+            data: { question: newQuestion }
+        });
+
+    } catch (error) {
+        console.error('[addCustomQuestion]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const updateQuestion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { question, answer } = req.body;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid question ID" });
+        }
+
+        if (!question && !answer) {
+            return res.status(400).json({ success: false, message: "Provide question or answer to update" });
+        }
+
+        if (question && (typeof question !== 'string' || question.trim().length === 0)) {
+            return res.status(400).json({ success: false, message: "Question must be non-empty string" });
+        }
+
+        if (answer && (typeof answer !== 'string' || answer.trim().length === 0)) {
+            return res.status(400).json({ success: false, message: "Answer must be non-empty string" });
+        }
+
+        const existingQuestion = await Question.findById(id).populate('session', 'user');
+
+        if (!existingQuestion) {
+            return res.status(404).json({ success: false, message: "Question not found" });
+        }
+
+        if (!existingQuestion.session || existingQuestion.session.user.toString() !== req.id) {
+            return res.status(403).json({ success: false, message: "Unauthorized access" });
+        }
+
+        if (question) existingQuestion.question = question.trim();
+        if (answer) existingQuestion.answer = answer.trim();
+
+        await existingQuestion.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Question updated",
+            data: { question: existingQuestion }
+        });
+
+    } catch (error) {
+        console.error('[updateQuestion]', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
