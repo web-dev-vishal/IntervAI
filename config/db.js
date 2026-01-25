@@ -2,9 +2,25 @@ import mongoose from "mongoose";
 
 export const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log(`🍃 MongoDB Connected successfully`);
+        const options = {
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        };
+
+        await mongoose.connect(process.env.MONGO_URI, options);
+        
+        console.log('✅ MongoDB Connected:', mongoose.connection.host);
     } catch (error) {
-        console.log(`Error in Connect DB${error}`);   
+        console.error('❌ MongoDB Connection Error:', error.message);
+        process.exit(1);
     }
-}
+};
+
+mongoose.connection.on('disconnected', () => {
+    console.log('⚠️  MongoDB Disconnected');
+});
+
+mongoose.connection.on('error', (error) => {
+    console.error('❌ MongoDB Error:', error);
+});
