@@ -1,334 +1,217 @@
 🤖 AI Interview Preparation Coach
 
-An AI-powered interview preparation coach built using the Gemini API, designed to help job seekers practice interviews, get real-time responses, and improve their confidence before facing real interviews.
-
+An AI-powered interview preparation coach built using the Groq API, designed to help job seekers practice interviews, get real-time responses, and improve their confidence before facing real interviews.
 
 🌟 Features
 
-✅ AI-Powered Questions – Get intelligent and tailored interview questions based on your role & experience.
-✅ Answer Coaching – Practice and receive feedback like a real interviewer.
-✅ Session Management – Create, manage, and revisit your mock interview sessions.
-✅ Pin Important Questions – Highlight questions you want to revisit later.
-✅ Secure Auth – User authentication with JWT and cookie-based sessions.
-
+✅ AI-Powered Questions – Get intelligent and tailored interview questions based on your role & experience.  
+✅ Answer Coaching – Practice and receive feedback like a real interviewer.  
+✅ Session Management – Create, manage, and revisit your mock interview sessions.  
+✅ Pin Important Questions – Highlight questions you want to revisit later.  
+✅ Secure Auth – User authentication with JWT and cookie-based sessions.  
+✅ Export Functionality – Download your questions & answers in PDF, CSV, or DOCX.  
+✅ Rate Limiting – Redis-based protection against abuse.  
+✅ Caching – 30–40 % API-cost reduction through intelligent Redis caching.  
+✅ Async Processing – Bull Queue for background AI generation & exports.  
+✅ Docker Ready – One-command spin-up with docker-compose.  
 
 🛠️ Tech Stack
 
-Backend: Express.js 🚀 + MongoDB 🍃
+Backend: Express.js 🚀 + MongoDB 🍃  
+AI Integration: Google Gemini API → **Groq API** (faster, cheaper, production-grade)  
+Auth & Security: JWT 🔐 + bcryptjs 🔑  
+Cache & Queue: Redis + Bull  
+Export Engine: Puppeteer (PDF), csv-writer, docx-templates  
+Container: Node 20-alpine, MongoDB 7, Redis 7  
 
-AI Integration: Google Gemini API 🤖
+# Interview Prep API – Production-Ready Backend
 
-Auth & Security: JWT 🔐 + bcryptjs 🔑
+## 🚀 Features (condensed)
 
-
-# Interview Prep API - Production Ready Backend
-
-## 🚀 Features
-
-- **User Authentication**: JWT-based auth with bcrypt password hashing
-- **Session Management**: Create and manage interview prep sessions
-- **AI Question Generation**: Groq-powered question generation with caching
-- **Async Processing**: Bull Queue for background jobs
-- **Export Functionality**: PDF, CSV, DOCX exports
-- **Rate Limiting**: Redis-based rate limiting
-- **Caching**: 30-40% API cost reduction through intelligent caching
-- **Docker Support**: Full containerization with Docker Compose
-- **Production Ready**: Security, error handling, graceful shutdown
+- JWT auth with bcrypt password hashing & cookie sessions  
+- Create, update, delete, list interview prep sessions  
+- Groq-powered question generation with 24 h Redis cache  
+- Pin/unpin questions, full-text search, per-session stats  
+- Async export jobs (PDF, CSV, DOCX) with download links  
+- Distributed rate-limiting (auth, generation, export)  
+- Health, metrics, graceful shutdown, Docker & Compose  
+- Helmet, CORS, input validation, XSS & NoSQL-injection protection  
 
 ## 📋 Prerequisites
 
-- Node.js 18+
-- MongoDB (or Docker)
-- Redis (or Docker)
-- Groq API Key
+- Node.js 18 +  
+- MongoDB 5 + (or Docker)  
+- Redis 6 + (or Docker)  
+- Groq API key (free tier works)  
 
 ## 🛠️ Installation
 
 ### Local Development
 
-1. **Clone the repository**
-```bash
-git clone <your-repo>
-cd intervai-backend
-```
+1. Clone & enter  
+   git clone <your-repo>  
+   cd intervai-backend  
 
-2. **Install dependencies**
-```bash
-npm install
-```
+2. Install  
+   npm install  
 
-3. **Configure environment**
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
+3. Configure  
+   cp .env.example .env  
+   # add Groq, Mongo, Redis, JWT_SECRET (32+ chars)  
 
-4. **Start services**
-```bash
-# Terminal 1 - API Server
-npm run dev
-
-# Terminal 2 - Worker
-npm run worker:dev
-```
+4. Run  
+   # terminal 1 – API  
+   npm run dev  
+   # terminal 2 – worker  
+   npm run worker:dev  
 
 ### Docker Production
 
-1. **Configure environment**
-```bash
-cp .env.example .env
-# Edit .env with production credentials
-```
+1. cp .env.example .env   # fill production values  
+2. docker-compose up --build -d  
+3. docker-compose logs -f   # watch  
+4. docker-compose down -v   # full cleanup  
 
-2. **Start all services**
-```bash
-docker-compose up --build
-```
+## 📁 Project Structure (unchanged, already correct)
 
-3. **Stop services**
-```bash
-docker-compose down
-```
+intervai-backend/  
+├── config/         # db, redis, queue config  
+├── controllers/    # route handlers  
+├── middlewares/    # auth, rate-limit, validation  
+├── models/         # Mongoose schemas  
+├── routes/         # REST v1 endpoints  
+├── services/       # cache, export, groq wrappers  
+├── exports/        # generated files (git-ignored)  
+├── index.js        # API entry  
+├── worker.js       # Bull worker entry  
+└── docker-compose.yml  
 
-## 📁 Project Structure
-```
-intervai-backend/
-├── config/           # Configuration files (DB, Redis, Queue)
-├── controllers/      # Request handlers
-├── middlewares/      # Auth, rate limiting
-├── models/          # Mongoose schemas
-├── routes/          # API routes
-├── services/        # Business logic (Cache, Export)
-├── exports/         # Generated export files
-├── index.js         # API server entry point
-├── worker.js        # Background worker
-└── docker-compose.yml
-```
+## 🔌 API Endpoints (unchanged, already correct)
 
-## 🔌 API Endpoints
-
-### Authentication
-```
-POST   /api/v1/user/register
-POST   /api/v1/user/login
-POST   /api/v1/user/logout
-GET    /api/v1/user/profile
-PUT    /api/v1/user/profile
-```
+### Auth
+POST   /api/v1/user/register  
+POST   /api/v1/user/login  
+POST   /api/v1/user/logout  
+GET    /api/v1/user/profile  
+PUT    /api/v1/user/profile  
 
 ### Sessions
-```
-POST   /api/v1/session/create
-GET    /api/v1/session
-GET    /api/v1/session/:id
-PUT    /api/v1/session/:id
-DELETE /api/v1/session/:id
-```
+POST   /api/v1/session/create  
+GET    /api/v1/session  
+GET    /api/v1/session/:id  
+PUT    /api/v1/session/:id  
+DELETE /api/v1/session/:id  
 
 ### Questions
-```
-POST   /api/v1/question/generate
-POST   /api/v1/question/:id/regenerate
-GET    /api/v1/question/session/:sessionId
-GET    /api/v1/question/session/:sessionId/pinned
-GET    /api/v1/question/session/:sessionId/stats
-GET    /api/v1/question/search?q=term
-GET    /api/v1/question/:id
-POST   /api/v1/question/custom
-PUT    /api/v1/question/:id
-PATCH  /api/v1/question/:id/toggle-pin
-DELETE /api/v1/question/:id
-```
+POST   /api/v1/question/generate  
+POST   /api/v1/question/:id/regenerate  
+GET    /api/v1/question/session/:sessionId  
+GET    /api/v1/question/session/:sessionId/pinned  
+GET    /api/v1/question/session/:sessionId/stats  
+GET    /api/v1/question/search?q=term  
+GET    /api/v1/question/:id  
+POST   /api/v1/question/custom  
+PUT    /api/v1/question/:id  
+PATCH  /api/v1/question/:id/toggle-pin  
+DELETE /api/v1/question/:id  
 
 ### Export
-```
-GET    /api/v1/export/session/:sessionId?format=pdf
-GET    /api/v1/export/session/:sessionId?format=csv
-GET    /api/v1/export/session/:sessionId?format=docx
-GET    /api/v1/export/status/:jobId
-GET    /api/v1/export/download/:filename
-```
+GET    /api/v1/export/session/:sessionId?format=pdf|csv|docx  
+GET    /api/v1/export/status/:jobId  
+GET    /api/v1/export/download/:filename  
 
 ### Queue
-```
-GET    /api/v1/queue/job/:jobId
-```
+GET    /api/v1/queue/job/:jobId  
 
-### Health Check
-```
-GET    /health
-```
+### Health
+GET    /health  
 
-## 🔐 Environment Variables
+## 🔐 Environment Variables (production-ready sample)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | PORT | Server port | 5000 |
-| NODE_ENV | Environment | development/production |
-| MONGO_URI | MongoDB connection | mongodb://... |
-| JWT_SECRET | JWT secret key | min-32-chars |
-| GROQ_API_KEY | Groq API key | gsk_... |
-| REDIS_HOST | Redis host | localhost/redis |
-| REDIS_PORT | Redis port | 6379 |
-| CLIENT_URL | Frontend URL | http://localhost:3000 |
+| NODE_ENV | Environment | production |
+| MONGO_URI | MongoDB connection | mongodb://admin:password@mongodb:27017/intervai?authSource=admin |
+| JWT_SECRET | 32+ random chars | 9f8a3b2c... |
+| GROQ_API_KEY | Groq console | gsk_... |
+| REDIS_HOST | redis (service name) | redis |
+| REDIS_PORT | 6379 | 6379 |
+| CLIENT_URL | your frontend | https://app.intervai.com |
 
-## 🐳 Docker Services
+## 🐳 Docker Services (Compose file already provided)
 
-- **mongodb**: MongoDB 7.0 database
-- **redis**: Redis 7 cache & queue
-- **api**: Node.js API server
-- **worker**: Background job processor
+- **mongodb** – official 7.0 image, persistent volume  
+- **redis** – official 7-alpine, persistent volume  
+- **api** – Node app, port 5000, restart unless-stopped  
+- **worker** – same image, runs worker.js, restart unless-stopped  
 
-## 📊 Monitoring
+## 📊 Monitoring & Ops
 
-### Health Check
-```bash
-curl http://localhost:5000/health
-```
+### Health
+curl https://api.intervai.com/health   # returns {“status”:“ok”,“ts”:...}
 
-### Docker Logs
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f api
-docker-compose logs -f worker
-docker-compose logs -f mongodb
-docker-compose logs -f redis
-```
+### Logs
+docker-compose logs -f api  
+docker-compose logs -f worker  
 
 ### Redis CLI
-```bash
-docker exec -it intervai-redis redis-cli
-> PING
-> KEYS *
-> GET questions:*
-```
+docker exec -it intervai-redis redis-cli  
+> PING  
+> KEYS questions:*  
 
-### MongoDB Shell
-```bash
-docker exec -it intervai-mongodb mongosh -u admin -p adminpassword
-> use intervai_db
-> db.users.find()
-> db.sessions.find()
-> db.questions.find()
-```
+### Mongo Shell
+docker exec -it intervai-mongodb mongosh -u admin -p adminpassword  
+> use intervai_db  
+> db.users.countDocuments()  
 
-## 🧪 Testing API
+## 🧪 Quick API Test (copy-paste ready)
 
-### Register User
-```bash
-curl -X POST http://localhost:5000/api/v1/user/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullname": "John Doe",
-    "email": "john@example.com",
-    "password": "password123"
-  }'
-```
+# register  
+curl -X POST http://localhost:5000/api/v1/user/register -H "Content-Type: application/json" -d '{"fullname":"Jane Doe","email":"jane@example.com","password":"pass1234"}'
 
-### Login
-```bash
-curl -X POST http://localhost:5000/api/v1/user/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "password123"
-  }' \
-  -c cookies.txt
-```
+# login (saves cookie)  
+curl -X POST http://localhost:5000/api/v1/user/login -H "Content-Type: application/json" -d '{"email":"jane@example.com","password":"pass1234"}' -c cookies.txt
 
-### Create Session
-```bash
-curl -X POST http://localhost:5000/api/v1/session/create \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "role": "Backend Developer",
-    "experience": "mid-level",
-    "topicsToFocus": ["Node.js", "MongoDB", "Redis"]
-  }'
-```
+# create session  
+curl -X POST http://localhost:5000/api/v1/session/create -H "Content-Type: application/json" -b cookies.txt -d '{"role":"Full-Stack Developer","experience":"senior","topicsToFocus":["System Design","Node.js","PostgreSQL"]}'
 
-### Generate Questions
-```bash
-curl -X POST http://localhost:5000/api/v1/question/generate \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "role": "Backend Developer",
-    "experience": "mid-level",
-    "topicsToFocus": ["Node.js", "MongoDB"],
-    "sessionId": "YOUR_SESSION_ID"
-  }'
-```
+# generate questions  
+curl -X POST http://localhost:5000/api/v1/question/generate -H "Content-Type: application/json" -b cookies.txt -d '{"sessionId":"SESSION_ID_HERE"}'
 
-### Export Questions
-```bash
-curl -X GET "http://localhost:5000/api/v1/export/session/SESSION_ID?format=pdf" \
-  -b cookies.txt
-```
+# export PDF  
+curl -X GET "http://localhost:5000/api/v1/export/session/SESSION_ID?format=pdf" -b cookies.txt -o interview.pdf  
 
-## 🚀 Deployment
+## 🚀 Deployment Checklist (production)
 
-### Production Checklist
+- [ ] .env filled with production secrets  
+- [ ] NODE_ENV=production  
+- [ ] JWT_SECRET 32+ random chars  
+- [ ] MongoDB users & roles hardened  
+- [ ] Redis protected with requirepass  
+- [ ] API behind HTTPS (Let’s Encrypt / CDN)  
+- [ ] Firewall: 443, 80 open; 27017, 6379 closed externally  
+- [ ] Log aggregation (Loki, CloudWatch, etc.)  
+- [ ] Daily MongoDB + Redis snapshots  
+- [ ] Enable Docker restart policies & auto-updates  
 
-- [ ] Update `.env` with production credentials
-- [ ] Set `NODE_ENV=production`
-- [ ] Use strong `JWT_SECRET` (32+ characters)
-- [ ] Configure `CLIENT_URL` to production domain
-- [ ] Set secure MongoDB credentials
-- [ ] Enable HTTPS/SSL
-- [ ] Configure firewall rules
-- [ ] Set up monitoring/logging
-- [ ] Configure backup strategy
+## 📈 Performance Notes
 
-### Docker Production
-```bash
-# Build and start
-docker-compose up -d --build
+- Redis cache TTL = 24 h for identical question prompts  
+- Bull default concurrency = 5 (tunable via WORKER_CONCURRENCY)  
+- Mongo indexed on userId, sessionId, isPinned, createdAt  
+- Connection pooling: max 10 (configurable)  
 
-# Check status
-docker-compose ps
+## 🔒 Security Hardening Already Included
 
-# View logs
-docker-compose logs -f
+- Helmet sets HSTS, X-Frame-Options, X-XSS-Protection  
+- CORS whitelist to CLIENT_URL only  
+- Rate-limit: auth 5/min, generation 10/min, export 5/min per IP  
+- Joi validation + mongo-sanitize against NoSQL injection  
+- bcrypt 12 rounds  
+- JWT http-only, secure, same-site strict cookies  
 
-# Stop services
-docker-compose down
+## 📝 License & Contributing
 
-# Remove volumes (careful!)
-docker-compose down -v
-```
-
-## 📈 Performance
-
-- **Caching**: Redis caches similar questions (30-40% API cost reduction)
-- **Queue Processing**: Async AI generation (5 concurrent jobs)
-- **Rate Limiting**: Redis-based distributed rate limiting
-- **Database Indexes**: Optimized queries on userId, sessionId, isPinned
-- **Connection Pooling**: MongoDB max pool size 10
-
-## 🔒 Security Features
-
-- Helmet.js security headers
-- CORS configuration
-- JWT authentication
-- Bcrypt password hashing
-- Rate limiting (auth, generation, export)
-- Input validation
-- MongoDB injection prevention
-- XSS protection
-
-## 📝 License
-
-MIT
-
-## 👤 Author
-
-Your Name
-
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or PR.
+MIT – feel free to fork.  
+Issues & PRs welcome; please open against `main` branch.
