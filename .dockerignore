@@ -1,0 +1,19 @@
+# Create empty .gitkeep
+touch exports/.gitkeep
+```
+
+### .gitignore
+```
+node_modules/
+npm-debug.log
+.env
+.env.production
+.DS_Store
+*.log
+exports/*
+!exports/.gitkeep
+.vscode/
+.idea/
+coverage/
+dist/
+build/
