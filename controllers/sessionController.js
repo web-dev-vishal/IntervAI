@@ -22,10 +22,10 @@ export const createSession = async (req, res) => {
         const { role, experience, topicsToFocus, status } = req.body;
         const userId = req.id;
         
-        if (!role || !experience || !topicsToFocus || !status ) {
+        if (!role || !experience || !topicsToFocus ) {
             return res.status(400).json({
                 success: false,
-                message: "role, experience, and topicsToFocus required"
+                message: "role, experience & topicsToFocus required"
             });
         }
 
@@ -47,13 +47,6 @@ export const createSession = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: `Invalid experience. Allowed: ${VALID_EXPERIENCE.join(', ')}`
-            });
-        }
-
-        if (!VALID_STATUS.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: `Invalid status. Allowed: ${VALID_STATUS.join(', ')}`
             });
         }
 
