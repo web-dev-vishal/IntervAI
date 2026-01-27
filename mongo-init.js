@@ -1,18 +1,20 @@
-db.createUser({
-  user: 'intervai_user',
-  pwd: 'intervai_password',
-  roles: [
-    {
-      role: 'readWrite',
-      db: 'intervai_db',
-    },
-  ],
-});
-
 db = db.getSiblingDB('intervai_db');
 
+// Create collections
+db.createCollection('users');
+db.createCollection('sessions');
+db.createCollection('questions');
+
+// Create indexes for better performance
 db.users.createIndex({ email: 1 }, { unique: true });
-db.sessions.createIndex({ user: 1, createdAt: -1 });
-db.sessions.createIndex({ user: 1, status: 1 });
-db.questions.createIndex({ session: 1, isPinned: -1, createdAt: -1 });
-db.questions.createIndex({ session: 1, createdAt: -1 });
+db.users.createIndex({ createdAt: 1 });
+
+db.sessions.createIndex({ userId: 1 });
+db.sessions.createIndex({ createdAt: -1 });
+
+db.questions.createIndex({ sessionId: 1 });
+db.questions.createIndex({ createdAt: -1 });
+
+print('✅ Database initialized successfully');
+print('✅ Collections created: users, sessions, questions');
+print('✅ Indexes created');
