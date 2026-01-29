@@ -16,36 +16,25 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// ============================================
-// SECURITY MIDDLEWARE
-// ============================================
-
+// Security
 app.use(helmet({
     contentSecurityPolicy: NODE_ENV === 'production',
     crossOriginEmbedderPolicy: NODE_ENV === 'production',
-    hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true
-    }
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
 }));
-
-// Disable X-Powered-By header
 app.disable('x-powered-by');
 
-// ============================================
-// CORS CONFIGURATION
-// ============================================
+// ⭐ FIX #1: Trust proxy for rate limiting
+app.set('trust proxy', 1);
 
+// CORS
 const allowedOrigins = process.env.CLIENT_URL 
     ? process.env.CLIENT_URL.split(',').map(url => url.trim())
     : ['http://localhost:3000', 'http://localhost:5173'];
 
-const corsOptions = {
-    origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
+app.use(cors({
+    origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -57,70 +46,40 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 86400, // 24 hours
+    maxAge: 86400,
     optionsSuccessStatus: 200
-};
+}));
 
-app.use(cors(corsOptions));
-
-// ============================================
-// BODY PARSING MIDDLEWARE
-// ============================================
-
+// Body parsing
 app.use(express.json({ 
     limit: '10mb',
     verify: (req, res, buf) => {
         try {
             JSON.parse(buf);
         } catch (e) {
-            res.status(400).json({
-                success: false,
-                message: 'Invalid JSON payload'
-            });
+            res.status(400).json({ success: false, message: 'Invalid JSON payload' });
             throw new Error('Invalid JSON');
         }
     }
 }));
-
-app.use(express.urlencoded({ 
-    extended: true, 
-    limit: '10mb',
-    parameterLimit: 10000
-}));
-
+app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 10000 }));
 app.use(cookieParser());
 
-// ============================================
-// REQUEST LOGGING MIDDLEWARE
-// ============================================
-
+// Development logging
 if (NODE_ENV === 'development') {
     app.use((req, res, next) => {
-        const timestamp = new Date().toISOString();
-        console.log(`[${timestamp}] ${req.method} ${req.path}`);
-        
-        // Log request body for POST/PUT/PATCH (excluding sensitive data)
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
         if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
             const sanitizedBody = { ...req.body };
             if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
             if (sanitizedBody.token) sanitizedBody.token = '[REDACTED]';
             console.log('Body:', JSON.stringify(sanitizedBody, null, 2));
         }
-        
         next();
     });
 }
 
-// ============================================
-// GLOBAL RATE LIMITER
-// ============================================
-
-app.use(generalLimiter);
-
-// ============================================
-// HEALTH CHECK & ROOT ROUTES
-// ============================================
-
+// Health check routes (no rate limit)
 app.get('/', (req, res) => {
     res.json({
         success: true,
@@ -133,329 +92,128 @@ app.get('/', (req, res) => {
             users: '/api/v1/user',
             sessions: '/api/v1/session',
             questions: '/api/v1/question'
-        },
-        documentation: {
-            api: '/api/v1',
-            version: 'v1'
         }
     });
 });
 
 app.get('/health', (req, res) => {
     const dbState = mongoose.connection.readyState;
-    const dbStateMap = {
-        0: 'disconnected',
-        1: 'connected',
-        2: 'connecting',
-        3: 'disconnecting'
-    };
-
-    const healthcheck = {
+    const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    res.status(dbState === 1 ? 200 : 503).json({
         success: true,
         status: dbState === 1 ? 'OK' : 'DEGRADED',
         uptime: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         environment: NODE_ENV,
-        database: {
-            status: dbStateMap[dbState] || 'unknown',
-            connected: dbState === 1
-        },
-        memory: {
-            used: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
-            total: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`
-        },
-        config: {
-            port: !!process.env.PORT,
-            mongoUri: !!process.env.MONGO_URI,
-            jwtSecret: !!process.env.JWT_SECRET,
-            groqApiKey: !!process.env.GROQ_API,
-            clientUrl: !!process.env.CLIENT_URL
-        }
-    };
-    
-    const statusCode = dbState === 1 ? 200 : 503;
-    res.status(statusCode).json(healthcheck);
-});
-
-// API version route
-app.get('/api/v1', (req, res) => {
-    res.json({
-        success: true,
-        version: 'v1',
-        message: 'Interview Prep API v1',
-        routes: {
-            users: '/api/v1/user',
-            sessions: '/api/v1/session',
-            questions: '/api/v1/question'
-        }
+        database: { status: dbStateMap[dbState] || 'unknown', connected: dbState === 1 }
     });
 });
 
-// ============================================
-// API ROUTES
-// ============================================
+// ⭐ FIX #2: Apply rate limiter ONLY to /api routes (prevents double counting)
+app.use('/api', generalLimiter);
 
+// API Routes
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/session", sessionRouter);
 app.use("/api/v1/question", questionRoute);
 
-// ============================================
-// 404 HANDLER
-// ============================================
-
-app.use((req, res, next) => {
+// 404 Handler
+app.use((req, res) => {
     res.status(404).json({
         success: false,
         message: 'Route not found',
         path: req.originalUrl,
-        method: req.method,
-        timestamp: new Date().toISOString(),
-        availableRoutes: {
-            root: '/',
-            health: '/health',
-            users: '/api/v1/user',
-            sessions: '/api/v1/session',
-            questions: '/api/v1/question'
-        }
+        method: req.method
     });
 });
 
-// ============================================
-// GLOBAL ERROR HANDLER
-// ============================================
-
+// Global Error Handler
 app.use((err, req, res, next) => {
-    // Log error details
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('❌ [Global Error Handler]');
-    console.error('Time:', new Date().toISOString());
-    console.error('Path:', req.path);
-    console.error('Method:', req.method);
-    console.error('Error:', err);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.error('❌ Error:', err);
 
-    // Mongoose Validation Error
     if (err.name === 'ValidationError') {
         return res.status(400).json({
             success: false,
             message: 'Validation error',
-            errors: Object.values(err.errors).map(e => ({
-                field: e.path,
-                message: e.message
-            }))
+            errors: Object.values(err.errors).map(e => ({ field: e.path, message: e.message }))
         });
     }
-
-    // Mongoose Cast Error (Invalid ObjectId)
     if (err.name === 'CastError') {
-        return res.status(400).json({
-            success: false,
-            message: `Invalid ${err.path}: ${err.value}`,
-            error: 'Invalid ID format'
-        });
+        return res.status(400).json({ success: false, message: `Invalid ${err.path}: ${err.value}` });
     }
-
-    // MongoDB Duplicate Key Error
     if (err.code === 11000) {
         const field = Object.keys(err.keyPattern)[0];
-        const value = err.keyValue[field];
-        return res.status(409).json({
-            success: false,
-            message: `${field} '${value}' already exists`,
-            field: field
-        });
+        return res.status(409).json({ success: false, message: `${field} already exists` });
     }
-
-    // JWT Error
     if (err.name === 'JsonWebTokenError') {
-        return res.status(401).json({
-            success: false,
-            message: 'Invalid authentication token'
-        });
+        return res.status(401).json({ success: false, message: 'Invalid token' });
     }
-
-    // JWT Expired Error
     if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({
-            success: false,
-            message: 'Authentication token has expired'
-        });
+        return res.status(401).json({ success: false, message: 'Token expired' });
     }
-
-    // CORS Error
     if (err.message === 'Not allowed by CORS') {
-        return res.status(403).json({
-            success: false,
-            message: 'CORS policy violation',
-            error: 'Origin not allowed'
-        });
+        return res.status(403).json({ success: false, message: 'CORS policy violation' });
     }
 
-    // Payload Too Large Error
-    if (err.type === 'entity.too.large') {
-        return res.status(413).json({
-            success: false,
-            message: 'Payload too large',
-            error: 'Request body exceeds 10MB limit'
-        });
-    }
-
-    // Invalid JSON Error
-    if (err.message === 'Invalid JSON') {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid JSON in request body'
-        });
-    }
-
-    // Default Error Response
-    const statusCode = err.status || err.statusCode || 500;
-    const message = NODE_ENV === 'production' 
-        ? 'Internal server error' 
-        : err.message || 'Something went wrong';
-
-    res.status(statusCode).json({
+    res.status(err.status || 500).json({
         success: false,
-        message: message,
-        ...(NODE_ENV === 'development' && { 
-            stack: err.stack,
-            error: err.name
-        })
+        message: NODE_ENV === 'production' ? 'Internal server error' : err.message
     });
 });
 
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
-
+// Graceful shutdown
 const gracefulShutdown = async (signal) => {
-    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`🛑 ${signal} received`);
-    console.log('📦 Starting graceful shutdown...');
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-    
+    console.log(`\n🛑 ${signal} received - shutting down gracefully...`);
     try {
-        // Close MongoDB connection
         if (mongoose.connection.readyState === 1) {
             await mongoose.connection.close(false);
-            console.log('✅ MongoDB connection closed gracefully');
+            console.log('✅ MongoDB closed');
         }
-        
-        console.log('✅ Graceful shutdown completed\n');
         process.exit(0);
     } catch (error) {
-        console.error('❌ Error during graceful shutdown:', error);
+        console.error('❌ Shutdown error:', error);
         process.exit(1);
     }
 };
 
-// Handle shutdown signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// ============================================
-// UNHANDLED ERROR HANDLERS
-// ============================================
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('❌ Unhandled Promise Rejection');
-    console.error('Time:', new Date().toISOString());
-    console.error('Promise:', promise);
-    console.error('Reason:', reason);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-    
-    if (NODE_ENV === 'production') {
-        gracefulShutdown('UNHANDLED_REJECTION');
-    }
+// Unhandled errors
+process.on('unhandledRejection', (reason) => {
+    console.error('❌ Unhandled Rejection:', reason);
+    if (NODE_ENV === 'production') gracefulShutdown('UNHANDLED_REJECTION');
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('❌ Uncaught Exception');
-    console.error('Time:', new Date().toISOString());
-    console.error('Error:', error);
-    console.error('Stack:', error.stack);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-    
-    if (NODE_ENV === 'production') {
-        gracefulShutdown('UNCAUGHT_EXCEPTION');
-    }
+    console.error('❌ Uncaught Exception:', error);
+    if (NODE_ENV === 'production') gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
-// MongoDB connection error handler
-mongoose.connection.on('error', (err) => {
-    console.error('❌ MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-    console.warn('⚠️  MongoDB disconnected');
-});
-
-mongoose.connection.on('reconnected', () => {
-    console.log('✅ MongoDB reconnected');
-});
-
-// ============================================
-// SERVER STARTUP
-// ============================================
-
+// Start server
 const startServer = async () => {
     try {
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🚀 Starting Interview Prep API Server');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        console.log('\n🚀 Starting Interview Prep API...\n');
 
-        // Validate required environment variables
         const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'GROQ_API'];
-        const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-        
-        if (missingEnvVars.length > 0) {
-            throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+        const missing = requiredEnvVars.filter(v => !process.env[v]);
+        if (missing.length > 0) {
+            throw new Error(`Missing env vars: ${missing.join(', ')}`);
         }
 
-        console.log('✅ Environment variables validated');
-
-        // Connect to database
         await connectDB();
-        console.log('✅ Database connection established');
+        console.log('✅ Database connected');
 
-        // Start listening
-        const server = app.listen(PORT, () => {
-            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('✅ Server Started Successfully');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log(`📍 Port: ${PORT}`);
-            console.log(`🌍 Environment: ${NODE_ENV}`);
-            console.log(`🔗 URL: http://localhost:${PORT}`);
+        app.listen(PORT, () => {
+            console.log(`✅ Server running on http://localhost:${PORT}`);
             console.log(`🏥 Health: http://localhost:${PORT}/health`);
-            console.log(`📚 API: http://localhost:${PORT}/api/v1`);
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-        });
-
-        // Handle server errors
-        server.on('error', (error) => {
-            if (error.code === 'EADDRINUSE') {
-                console.error(`❌ Port ${PORT} is already in use`);
-                process.exit(1);
-            } else {
-                console.error('❌ Server error:', error);
-                process.exit(1);
-            }
+            console.log(`📚 API: http://localhost:${PORT}/api/v1\n`);
         });
 
     } catch (error) {
-        console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ Failed to start server');
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('Error:', error.message);
-        if (NODE_ENV === 'development') {
-            console.error('Stack:', error.stack);
-        }
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        console.error('❌ Failed to start:', error.message);
         process.exit(1);
     }
 };
 
-// Start the server
 startServer();
