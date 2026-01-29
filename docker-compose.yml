@@ -56,7 +56,7 @@ services:
       PORT: ${PORT}
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME}?authSource=admin
       JWT_SECRET: ${JWT_SECRET}
-      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_API_KEY: ${GROQ_API}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CLIENT_URL: ${CLIENT_URL}
