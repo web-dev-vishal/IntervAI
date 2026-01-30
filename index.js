@@ -16,18 +16,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Security
 app.use(helmet({
     contentSecurityPolicy: NODE_ENV === 'production',
     crossOriginEmbedderPolicy: NODE_ENV === 'production',
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
 }));
 app.disable('x-powered-by');
-
-// ⭐ FIX #1: Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// CORS
 const allowedOrigins = process.env.CLIENT_URL 
     ? process.env.CLIENT_URL.split(',').map(url => url.trim())
     : ['http://localhost:3000', 'http://localhost:5173'];
@@ -50,7 +46,6 @@ app.use(cors({
     optionsSuccessStatus: 200
 }));
 
-// Body parsing
 app.use(express.json({ 
     limit: '10mb',
     verify: (req, res, buf) => {
@@ -65,7 +60,6 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 10000 }));
 app.use(cookieParser());
 
-// Development logging
 if (NODE_ENV === 'development') {
     app.use((req, res, next) => {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -79,7 +73,6 @@ if (NODE_ENV === 'development') {
     });
 }
 
-// Health check routes (no rate limit)
 app.get('/', (req, res) => {
     res.json({
         success: true,
@@ -109,15 +102,12 @@ app.get('/health', (req, res) => {
     });
 });
 
-// ⭐ FIX #2: Apply rate limiter ONLY to /api routes (prevents double counting)
 app.use('/api', generalLimiter);
 
-// API Routes
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/session", sessionRouter);
 app.use("/api/v1/question", questionRoute);
 
-// 404 Handler
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -127,7 +117,6 @@ app.use((req, res) => {
     });
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err);
 
@@ -161,7 +150,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Graceful shutdown
 const gracefulShutdown = async (signal) => {
     console.log(`\n🛑 ${signal} received - shutting down gracefully...`);
     try {
@@ -179,7 +167,6 @@ const gracefulShutdown = async (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Unhandled errors
 process.on('unhandledRejection', (reason) => {
     console.error('❌ Unhandled Rejection:', reason);
     if (NODE_ENV === 'production') gracefulShutdown('UNHANDLED_REJECTION');
@@ -190,7 +177,6 @@ process.on('uncaughtException', (error) => {
     if (NODE_ENV === 'production') gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
-// Start server
 const startServer = async () => {
     try {
         console.log('\n🚀 Starting Interview Prep API...\n');
