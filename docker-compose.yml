@@ -49,6 +49,8 @@ services:
         NODE_ENV: ${NODE_ENV}
     container_name: intervai-api
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "${PORT}:${PORT}"
     environment:
@@ -84,6 +86,8 @@ services:
         NODE_ENV: ${NODE_ENV}
     container_name: intervai-worker
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: ${NODE_ENV}
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME}?authSource=admin
