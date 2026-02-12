@@ -1,26 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7.0
-    container_name: intervai-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
-    volumes:
-      - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    networks:
-      - intervai-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
-
   redis:
     image: redis:7-alpine
     container_name: intervai-redis
@@ -54,15 +32,14 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${PORT}
-      MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME}?authSource=admin
+      MONGO_URI: ${MONGO_URI}
       JWT_SECRET: ${JWT_SECRET}
       GROQ_API: ${GROQ_API}
+      GROQ_API_KEY: ${GROQ_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CLIENT_URL: ${CLIENT_URL}
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -70,7 +47,7 @@ services:
     volumes:
       - ./exports:/app/exports
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:$${PORT}/health"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:$$PORT/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -88,13 +65,12 @@ services:
       - .env
     environment:
       NODE_ENV: ${NODE_ENV}
-      MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME}?authSource=admin
+      MONGO_URI: ${MONGO_URI}
       GROQ_API: ${GROQ_API}
+      GROQ_API_KEY: ${GROQ_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -113,7 +89,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
-    driver: local
   redis_data:
     driver: local
