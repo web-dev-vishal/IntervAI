@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:7.0
@@ -72,7 +70,7 @@ services:
     volumes:
       - ./exports:/app/exports
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${PORT}/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:$${PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
