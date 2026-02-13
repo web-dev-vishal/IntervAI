@@ -21,14 +21,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NODE_ENV: ${NODE_ENV}
     container_name: intervai-api
     restart: unless-stopped
     env_file:
       - .env
     ports:
-      - "${PORT}:${PORT}"
+      - "8000:8000"
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${PORT}
@@ -57,8 +55,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-      args:
-        NODE_ENV: ${NODE_ENV}
     container_name: intervai-worker
     restart: unless-stopped
     env_file:

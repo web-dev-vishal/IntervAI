@@ -18,7 +18,7 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app .
 
-RUN mkdir -p /app/exports && chmod 777 /app/exports
+RUN mkdir -p /app/exports && chmod 755 /app/exports
 
 ENV NODE_ENV=production
 
