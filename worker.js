@@ -11,6 +11,8 @@ import { Session } from "./models/session.model.js";
 import { Question } from "./models/question.model.js";
 import { CacheService } from "./services/cacheService.js";
 import { ExportService } from "./services/exportService.js";
+import { NotificationService } from "./services/notificationService.js";
+import { AnalyticsService } from "./services/analyticsService.js";
 import { getRedisClient, closeRedis } from "./config/redis.js";
 
 let groqInstance = null;
@@ -117,6 +119,25 @@ Format: [{"question": "...", "answer": "..."}]`;
             { $push: { questions: { $each: createdQuestions.map(q => q._id) } } }
         );
 
+        // Track analytics
+        await AnalyticsService.trackActivity(userId, 'question_generated', {
+            sessionId,
+            count: createdQuestions.length,
+            role,
+            experience
+        });
+
+        // Increment topic popularity
+        await AnalyticsService.incrementTopicPopularity(topicsToFocus);
+
+        // Send notification
+        await NotificationService.notifyJobComplete(
+            userId,
+            'question-generation',
+            job.id,
+            { count: createdQuestions.length }
+        );
+
         await job.progress(100);
 
         return {
@@ -126,6 +147,17 @@ Format: [{"question": "...", "answer": "..."}]`;
         };
     } catch (error) {
         console.error('[Question Generation Error]', error);
+        
+        // Send failure notification
+        if (job.data.userId) {
+            await NotificationService.notifyJobFailed(
+                job.data.userId,
+                'question-generation',
+                job.id,
+                error.message
+            );
+        }
+        
         throw error;
     }
 });
@@ -133,6 +165,8 @@ Format: [{"question": "...", "answer": "..."}]`;
 exportQueue.process(3, async (job) => {
     try {
         const { sessionId, userId, format } = job.data;
+
+        await job.progress(10);
 
         let filename;
 
@@ -146,9 +180,36 @@ exportQueue.process(3, async (job) => {
             throw new Error('Invalid format');
         }
 
+        await job.progress(100);
+
+        // Track analytics
+        await AnalyticsService.trackActivity(userId, 'export_generated', {
+            sessionId,
+            format
+        });
+
+        // Send notification
+        await NotificationService.notifyJobComplete(
+            userId,
+            'export-generation',
+            job.id,
+            { filename, format }
+        );
+
         return { filename };
     } catch (error) {
         console.error('[Export Generation Error]', error);
+        
+        // Send failure notification
+        if (job.data.userId) {
+            await NotificationService.notifyJobFailed(
+                job.data.userId,
+                'export-generation',
+                job.id,
+                error.message
+            );
+        }
+        
         throw error;
     }
 });

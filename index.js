@@ -10,6 +10,11 @@ import { connectDB } from "./config/db.js";
 import userRouter from "./routes/user.routes.js";
 import sessionRouter from "./routes/session.routes.js";
 import questionRoute from "./routes/question.routes.js";
+import exportRouter from "./routes/export.routes.js";
+import queueRouter from "./routes/queue.routes.js";
+import analyticsRouter from "./routes/analytics.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
+import bulkRouter from "./routes/bulk.routes.js";
 import { generalLimiter } from "./middlewares/rateLimiter.js";
 
 const app = express();
@@ -84,7 +89,12 @@ app.get('/', (req, res) => {
             health: '/health',
             users: '/api/v1/user',
             sessions: '/api/v1/session',
-            questions: '/api/v1/question'
+            questions: '/api/v1/question',
+            exports: '/api/v1/export',
+            queue: '/api/v1/queue',
+            analytics: '/api/v1/analytics',
+            notifications: '/api/v1/notifications',
+            bulk: '/api/v1/bulk'
         }
     });
 });
@@ -107,48 +117,16 @@ app.use('/api', generalLimiter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/session", sessionRouter);
 app.use("/api/v1/question", questionRoute);
+app.use("/api/v1/export", exportRouter);
+app.use("/api/v1/queue", queueRouter);
+app.use("/api/v1/analytics", analyticsRouter);
+app.use("/api/v1/notifications", notificationRouter);
+app.use("/api/v1/bulk", bulkRouter);
 
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'Route not found',
-        path: req.originalUrl,
-        method: req.method
-    });
-});
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 
-app.use((err, req, res, next) => {
-    console.error('❌ Error:', err);
-
-    if (err.name === 'ValidationError') {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation error',
-            errors: Object.values(err.errors).map(e => ({ field: e.path, message: e.message }))
-        });
-    }
-    if (err.name === 'CastError') {
-        return res.status(400).json({ success: false, message: `Invalid ${err.path}: ${err.value}` });
-    }
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyPattern)[0];
-        return res.status(409).json({ success: false, message: `${field} already exists` });
-    }
-    if (err.name === 'JsonWebTokenError') {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-    if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({ success: false, message: 'Token expired' });
-    }
-    if (err.message === 'Not allowed by CORS') {
-        return res.status(403).json({ success: false, message: 'CORS policy violation' });
-    }
-
-    res.status(err.status || 500).json({
-        success: false,
-        message: NODE_ENV === 'production' ? 'Internal server error' : err.message
-    });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const gracefulShutdown = async (signal) => {
     console.log(`\n🛑 ${signal} received - shutting down gracefully...`);

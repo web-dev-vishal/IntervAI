@@ -7,7 +7,13 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "worker": "node worker.js",
+    "worker:dev": "nodemon worker.js",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:rebuild": "docker-compose up -d --build"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +36,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.4",
     "multer": "^2.0.2",
+    "nodemailer": "^6.9.8",
     "nodemon": "^3.1.11",
     "pdfkit": "^0.17.2",
     "rate-limit-redis": "^4.3.1"

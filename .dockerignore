@@ -1,19 +1,22 @@
-# Create empty .gitkeep
-touch exports/.gitkeep
-```
-
-### .gitignore
-```
-node_modules/
+node_modules
 npm-debug.log
 .env
-.env.production
-.DS_Store
-*.log
-exports/*
-!exports/.gitkeep
-.vscode/
-.idea/
+.git
+.gitignore
+README.md
+README_NEW.md
+POSTMAN_COLLECTION.md
+IMPLEMENTATION_SUMMARY.md
+QUICK_TEST_GUIDE.md
+RENDER_DEPLOYMENT.md
+.vscode
+.idea
+*.md
+!package.json
+!package-lock.json
+exports/*.pdf
+exports/*.csv
+exports/*.docx
+logs/
 coverage/
-dist/
-build/
+.DS_Store

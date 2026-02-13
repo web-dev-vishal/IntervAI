@@ -11,7 +11,10 @@ import {
     login, 
     logout, 
     register, 
-    updateProfile 
+    updateProfile,
+    forgotPassword,
+    verifyOTP,
+    resetPassword
 } from '../controllers/userController.js';
 
 //adding routes
@@ -22,6 +25,11 @@ router.post('/login', authLimiter, login); //login User
 router.post('/logout', AuthMiddleware, logout); //logout User
 router.get('/profile', AuthMiddleware, getUser); //Get User
 router.put('/profile', AuthMiddleware, updateProfile); //Update User
+
+// Password Reset Routes
+router.post('/forgot-password', authLimiter, forgotPassword); //Request OTP
+router.post('/verify-otp', authLimiter, verifyOTP); //Verify OTP
+router.post('/reset-password', authLimiter, resetPassword); //Reset Password
 
 //exporting rotes 
 export default router;

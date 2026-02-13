@@ -1,4 +1,29 @@
 services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: intervai-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password123}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-intervai_db}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - intervai-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Redis Cache & Queue Backend
   redis:
     image: redis:7-alpine
     container_name: intervai-redis
@@ -9,14 +34,15 @@ services:
       - redis_data:/data
     networks:
       - intervai-network
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis123}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 10s
 
+  # Main API Server
   api:
     build:
       context: .
@@ -26,31 +52,36 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: ${PORT}
-      MONGO_URI: ${MONGO_URI}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8000}
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/${MONGO_DB_NAME:-intervai_db}?authSource=admin
       JWT_SECRET: ${JWT_SECRET}
-      GROQ_API: ${GROQ_API}
+      GROQ_API: ${GROQ_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      CLIENT_URL: ${CLIENT_URL}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
     depends_on:
+      mongodb:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - intervai-network
     volumes:
       - ./exports:/app/exports
+      - ./logs:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${PORT:-8000}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
+  # Background Worker for AI & Exports
   worker:
     build:
       context: .
@@ -60,19 +91,23 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: ${NODE_ENV}
-      MONGO_URI: ${MONGO_URI}
-      GROQ_API: ${GROQ_API}
+      NODE_ENV: ${NODE_ENV:-production}
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/${MONGO_DB_NAME:-intervai_db}?authSource=admin
+      GROQ_API: ${GROQ_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     depends_on:
+      mongodb:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - intervai-network
     volumes:
       - ./exports:/app/exports
+      - ./logs:/app/logs
     healthcheck:
       test: ["CMD", "node", "-e", "process.exit(0)"]
       interval: 30s
@@ -83,7 +118,14 @@ services:
 networks:
   intervai-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
   redis_data:
     driver: local
