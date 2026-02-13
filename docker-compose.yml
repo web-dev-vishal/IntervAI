@@ -47,7 +47,7 @@ services:
     volumes:
       - ./exports:/app/exports
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:$$PORT/health || exit 1"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
